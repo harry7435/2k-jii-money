@@ -183,7 +183,7 @@ class _MonthlySummaryCard extends StatelessWidget {
 
     return summary.when(
       loading: () => const SizedBox(height: 60),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (data) {
         final income = data['income'] ?? 0;
         final expense = data['expense'] ?? 0;

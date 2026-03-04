@@ -39,7 +39,7 @@ class BudgetScreen extends ConsumerWidget {
           // 총 예산 요약
           budgets.when(
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
             data: (budgetList) {
               final totalBudget =
                   budgetList.fold<int>(0, (sum, b) => sum + b.amount);

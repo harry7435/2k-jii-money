@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/family.dart';
+import '../models/family.dart' as model;
 import '../models/member.dart';
 import '../repositories/family_repository.dart';
+
+typedef Family = model.Family;
 
 final familyRepositoryProvider = Provider((_) => FamilyRepository());
 

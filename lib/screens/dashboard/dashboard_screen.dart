@@ -41,7 +41,7 @@ class DashboardScreen extends ConsumerWidget {
             // 요약 카드
             summary.when(
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
               data: (data) {
                 final income = data['income'] ?? 0;
                 final expense = data['expense'] ?? 0;
@@ -217,7 +217,7 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             transactions.when(
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
               data: (txList) {
                 final expenses = txList
                     .where((t) => t.type == TransactionType.expense)
