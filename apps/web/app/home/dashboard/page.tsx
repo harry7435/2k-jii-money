@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  PieChart, Pie, Cell, Tooltip, Legend,
+  PieChart, Pie, Cell, Tooltip,
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import { useFamilyStore } from '@/src/lib/store/familyStore'
@@ -97,8 +97,8 @@ export default function DashboardPage() {
                   cy="50%"
                   outerRadius={80}
                   dataKey="value"
-                  label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
+                  label={({ name, percent }: { name?: string; percent?: number }) =>
+                    `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`
                   }
                   labelLine={false}
                 >
@@ -106,7 +106,7 @@ export default function DashboardPage() {
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                <Tooltip formatter={(v) => [formatCurrency(v as number)]} />
               </PieChart>
             </ResponsiveContainer>
             {/* 범례 */}
@@ -138,7 +138,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}일`} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} labelFormatter={(l) => `${l}일`} />
+                <Tooltip formatter={(v) => [formatCurrency(v as number)]} labelFormatter={(l) => `${l}일`} />
                 <Bar dataKey="amount" fill="#4ECDC4" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

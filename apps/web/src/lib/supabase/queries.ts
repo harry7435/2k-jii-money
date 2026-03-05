@@ -20,14 +20,16 @@ export async function createFamily(nickname: string): Promise<{ family: Family; 
   const familyId = uuidv4()
   const memberId = uuidv4()
 
-  const { data: family, error: fErr } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: family, error: fErr } = await (supabase as any)
     .from('families')
     .insert({ id: familyId, family_code: familyCode })
     .select()
     .single()
   if (fErr) throw fErr
 
-  const { data: member, error: mErr } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: member, error: mErr } = await (supabase as any)
     .from('members')
     .insert({ id: memberId, family_id: familyId, nickname })
     .select()
@@ -36,39 +38,42 @@ export async function createFamily(nickname: string): Promise<{ family: Family; 
 
   await createDefaultCategories(familyId)
 
-  return { family, member }
+  return { family: family as Family, member: member as Member }
 }
 
 export async function findFamilyByCode(code: string): Promise<Family | null> {
   const supabase = createClient()
-  const { data } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any)
     .from('families')
     .select()
     .eq('family_code', code.toUpperCase())
     .single()
-  return data ?? null
+  return (data as Family) ?? null
 }
 
 export async function joinFamily(familyId: string, nickname: string): Promise<Member> {
   const supabase = createClient()
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('members')
     .insert({ id: uuidv4(), family_id: familyId, nickname })
     .select()
     .single()
   if (error) throw error
-  return data
+  return data as Member
 }
 
 export async function getMembers(familyId: string): Promise<Member[]> {
   const supabase = createClient()
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('members')
     .select()
     .eq('family_id', familyId)
     .order('created_at')
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as Member[]
 }
 
 // ─── Categories ────────────────────────────────────────────────────────────
@@ -83,20 +88,22 @@ export async function createDefaultCategories(familyId: string): Promise<void> {
     color: c.color,
     is_default: c.isDefault,
   }))
-  const { error } = await supabase.from('categories').insert(rows)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('categories').insert(rows)
   if (error) throw error
 }
 
 export async function getCategories(familyId: string): Promise<Category[]> {
   const supabase = createClient()
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('categories')
     .select()
     .eq('family_id', familyId)
     .order('is_default', { ascending: false })
     .order('name')
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as Category[]
 }
 
 export async function addCategory(
@@ -106,18 +113,20 @@ export async function addCategory(
   color: string
 ): Promise<Category> {
   const supabase = createClient()
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('categories')
     .insert({ id: uuidv4(), family_id: familyId, name, icon, color, is_default: false })
     .select()
     .single()
   if (error) throw error
-  return data
+  return data as Category
 }
 
 export async function deleteCategory(id: string): Promise<void> {
   const supabase = createClient()
-  const { error } = await supabase.from('categories').delete().eq('id', id)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('categories').delete().eq('id', id)
   if (error) throw error
 }
 
@@ -126,7 +135,8 @@ export async function deleteCategory(id: string): Promise<void> {
 export async function getTransactions(familyId: string, yearMonth: string): Promise<Transaction[]> {
   const supabase = createClient()
   const { from, to } = monthDateRange(yearMonth)
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('transactions')
     .select()
     .eq('family_id', familyId)
@@ -135,7 +145,7 @@ export async function getTransactions(familyId: string, yearMonth: string): Prom
     .order('date', { ascending: false })
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as Transaction[]
 }
 
 export async function addTransaction(params: {
@@ -148,7 +158,8 @@ export async function addTransaction(params: {
   date: string
 }): Promise<Transaction> {
   const supabase = createClient()
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('transactions')
     .insert({
       id: uuidv4(),
@@ -163,12 +174,13 @@ export async function addTransaction(params: {
     .select()
     .single()
   if (error) throw error
-  return data
+  return data as Transaction
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
   const supabase = createClient()
-  const { error } = await supabase.from('transactions').delete().eq('id', id)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('transactions').delete().eq('id', id)
   if (error) throw error
 }
 
@@ -191,13 +203,14 @@ export async function getMonthlySummary(
 
 export async function getBudgets(familyId: string, yearMonth: string): Promise<Budget[]> {
   const supabase = createClient()
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('budgets')
     .select()
     .eq('family_id', familyId)
     .eq('year_month', yearMonth)
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as Budget[]
 }
 
 export async function setBudget(
@@ -207,7 +220,8 @@ export async function setBudget(
   amount: number
 ): Promise<void> {
   const supabase = createClient()
-  const { data: existing } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase as any)
     .from('budgets')
     .select('id')
     .eq('family_id', familyId)
@@ -216,13 +230,15 @@ export async function setBudget(
     .single()
 
   if (existing) {
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
       .from('budgets')
       .update({ amount })
-      .eq('id', existing.id)
+      .eq('id', (existing as { id: string }).id)
     if (error) throw error
   } else {
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
       .from('budgets')
       .insert({ id: uuidv4(), family_id: familyId, category_id: categoryId, year_month: yearMonth, amount })
     if (error) throw error
@@ -231,6 +247,7 @@ export async function setBudget(
 
 export async function deleteBudget(id: string): Promise<void> {
   const supabase = createClient()
-  const { error } = await supabase.from('budgets').delete().eq('id', id)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('budgets').delete().eq('id', id)
   if (error) throw error
 }

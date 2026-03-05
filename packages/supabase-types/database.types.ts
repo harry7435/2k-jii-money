@@ -2,6 +2,8 @@
 // Run: pnpm type-gen to regenerate from live database
 // Source: supabase/schema.sql
 
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
 export type Database = {
   public: {
     Tables: {
@@ -21,6 +23,7 @@ export type Database = {
           family_code?: string
           created_at?: string | null
         }
+        Relationships: []
       }
       members: {
         Row: {
@@ -41,6 +44,15 @@ export type Database = {
           nickname?: string
           created_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: 'members_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          }
+        ]
       }
       categories: {
         Row: {
@@ -67,6 +79,15 @@ export type Database = {
           color?: string
           is_default?: boolean
         }
+        Relationships: [
+          {
+            foreignKeyName: 'categories_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          }
+        ]
       }
       transactions: {
         Row: {
@@ -102,6 +123,29 @@ export type Database = {
           date?: string
           created_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: 'transactions_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'transactions_member_id_fkey'
+            columns: ['member_id']
+            isOneToOne: false
+            referencedRelation: 'members'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'transactions_category_id_fkey'
+            columns: ['category_id']
+            isOneToOne: false
+            referencedRelation: 'categories'
+            referencedColumns: ['id']
+          }
+        ]
       }
       budgets: {
         Row: {
@@ -128,12 +172,35 @@ export type Database = {
           amount?: number
           created_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: 'budgets_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'budgets_category_id_fkey'
+            columns: ['category_id']
+            isOneToOne: false
+            referencedRelation: 'categories'
+            referencedColumns: ['id']
+          }
+        ]
       }
     }
-    Views: Record<string, never>
-    Functions: Record<string, never>
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
     Enums: {
-      transaction_type: 'income' | 'expense'
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
