@@ -215,19 +215,21 @@ export async function getBudgets(familyId: string, yearMonth: string): Promise<B
 
 export async function setBudget(
   familyId: string,
-  categoryId: string,
+  categoryId: string | null,
   yearMonth: string,
   amount: number
 ): Promise<void> {
   const supabase = createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: existing } = await (supabase as any)
+  let query = (supabase as any)
     .from('budgets')
     .select('id')
     .eq('family_id', familyId)
-    .eq('category_id', categoryId)
     .eq('year_month', yearMonth)
-    .single()
+
+  query = categoryId ? query.eq('category_id', categoryId) : query.is('category_id', null)
+
+  const { data: existing } = await query.single()
 
   if (existing) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

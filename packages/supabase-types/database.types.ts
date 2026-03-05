@@ -151,7 +151,7 @@ export type Database = {
         Row: {
           id: string
           family_id: string
-          category_id: string
+          category_id: string | null
           year_month: string
           amount: number
           created_at: string
@@ -159,7 +159,7 @@ export type Database = {
         Insert: {
           id: string
           family_id: string
-          category_id: string
+          category_id?: string | null
           year_month: string
           amount: number
           created_at?: string | null
