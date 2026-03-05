@@ -63,7 +63,7 @@ export function AddTransactionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
-      <div className="w-full max-w-md bg-white rounded-t-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-md bg-white rounded-t-2xl p-5 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">내역 추가</h2>
@@ -71,7 +71,7 @@ export function AddTransactionModal({
         </div>
 
         {/* Type toggle */}
-        <div className="flex rounded-xl overflow-hidden border">
+        <div className="flex rounded-xl overflow-hidden border border-gray-200">
           {(['expense', 'income'] as const).map((t) => (
             <button
               key={t}
@@ -88,7 +88,7 @@ export function AddTransactionModal({
         {/* Amount */}
         <div>
           <label className="text-xs text-gray-600 mb-1 block">금액</label>
-          <div className="flex items-center border rounded-xl px-3 py-2">
+          <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2">
             <input
               type="text"
               inputMode="numeric"
@@ -108,14 +108,14 @@ export function AddTransactionModal({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full border rounded-xl px-3 py-2 outline-none"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 outline-none"
           />
         </div>
 
         {/* Category */}
         <div>
           <label className="text-xs text-gray-600 mb-2 block">카테고리</label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto">
             {filteredCategories.map((cat) => (
               <button
                 key={cat.id}
@@ -141,7 +141,7 @@ export function AddTransactionModal({
             placeholder="메모 입력"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            className="w-full border rounded-xl px-3 py-2 outline-none"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 outline-none"
           />
         </div>
 
