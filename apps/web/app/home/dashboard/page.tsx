@@ -123,7 +123,7 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl p-4 flex flex-col items-center justify-center h-36 text-gray-400 text-sm">
+          <div className="bg-white rounded-2xl p-4 flex flex-col items-center justify-center h-36 text-gray-500 text-sm">
             <span className="material-symbols-outlined text-4xl mb-2">pie_chart</span>
             지출 데이터가 없습니다
           </div>
@@ -145,7 +145,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <p className="text-center text-xs text-gray-400 pb-2">{formatYearMonth(yearMonth)} 통계</p>
+        <p className="text-center text-xs text-gray-500 pb-2">{formatYearMonth(yearMonth)} 통계</p>
       </div>
     </div>
   )

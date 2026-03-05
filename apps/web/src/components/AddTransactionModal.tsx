@@ -77,7 +77,7 @@ export function AddTransactionModal({
               key={t}
               onClick={() => { setType(t); setCategoryId('') }}
               className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-                type === t ? 'bg-teal-400 text-white' : 'bg-white text-gray-500'
+                type === t ? 'bg-teal-400 text-white' : 'bg-white text-gray-600'
               }`}
             >
               {t === 'expense' ? '지출' : '수입'}
@@ -87,7 +87,7 @@ export function AddTransactionModal({
 
         {/* Amount */}
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">금액</label>
+          <label className="text-xs text-gray-600 mb-1 block">금액</label>
           <div className="flex items-center border rounded-xl px-3 py-2">
             <input
               type="text"
@@ -97,13 +97,13 @@ export function AddTransactionModal({
               onChange={(e) => handleAmountChange(e.target.value)}
               className="flex-1 text-right text-xl font-bold outline-none"
             />
-            <span className="ml-1 text-gray-500">원</span>
+            <span className="ml-1 text-gray-600">원</span>
           </div>
         </div>
 
         {/* Date */}
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">날짜</label>
+          <label className="text-xs text-gray-600 mb-1 block">날짜</label>
           <input
             type="date"
             value={date}
@@ -114,7 +114,7 @@ export function AddTransactionModal({
 
         {/* Category */}
         <div>
-          <label className="text-xs text-gray-500 mb-2 block">카테고리</label>
+          <label className="text-xs text-gray-600 mb-2 block">카테고리</label>
           <div className="flex flex-wrap gap-2">
             {filteredCategories.map((cat) => (
               <button
@@ -135,7 +135,7 @@ export function AddTransactionModal({
 
         {/* Memo */}
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">메모 (선택)</label>
+          <label className="text-xs text-gray-600 mb-1 block">메모 (선택)</label>
           <input
             type="text"
             placeholder="메모 입력"

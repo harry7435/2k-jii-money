@@ -86,14 +86,14 @@ export default function TransactionsPage() {
       {/* 거래 목록 */}
       <div className="flex-1 overflow-y-auto mt-3 pb-2">
         {transactions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-sm">
+          <div className="flex flex-col items-center justify-center h-40 text-gray-500 text-sm">
             <span className="material-symbols-outlined text-4xl mb-2">receipt_long</span>
             내역이 없습니다
           </div>
         ) : (
           sortedDates.map((date) => (
             <div key={date}>
-              <div className="px-4 py-1.5 bg-gray-50 text-xs text-gray-500 font-semibold">
+              <div className="px-4 py-1.5 bg-gray-50 text-xs text-gray-600 font-semibold">
                 {formatDate(date)}
               </div>
               {grouped[date].map((t) => {
@@ -107,7 +107,7 @@ export default function TransactionsPage() {
                     {cat && <CategoryIcon icon={cat.icon} color={cat.color} size="md" />}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{cat?.name ?? '알 수 없음'}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-500">
                         {mem?.nickname ?? ''}
                         {t.memo && ` · ${t.memo}`}
                       </p>
@@ -123,7 +123,7 @@ export default function TransactionsPage() {
                       </p>
                       <button
                         onClick={() => deleteMutation.mutate(t.id)}
-                        className="text-gray-300 hover:text-red-400"
+                        className="text-gray-400 hover:text-red-400"
                       >
                         <Trash2 size={14} />
                       </button>

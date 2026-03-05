@@ -66,7 +66,7 @@ export default function JoinFamilyPage() {
         {step === 'code' && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm text-gray-500">가족 코드 (6자리)</label>
+              <label className="text-sm text-gray-600">가족 코드 (6자리)</label>
               <input
                 type="text"
                 placeholder="예: A3BK2X"
@@ -92,10 +92,10 @@ export default function JoinFamilyPage() {
             <CheckCircle size={56} className="text-teal-400 mx-auto" />
             <div>
               <h2 className="text-xl font-bold text-gray-900">가족을 찾았어요!</h2>
-              <p className="text-gray-500 text-sm mt-1">닉네임을 입력하고 참여하세요</p>
+              <p className="text-gray-600 text-sm mt-1">닉네임을 입력하고 참여하세요</p>
             </div>
             <div className="space-y-2 text-left">
-              <label className="text-sm text-gray-500">닉네임</label>
+              <label className="text-sm text-gray-600">닉네임</label>
               <input
                 type="text"
                 placeholder="사용할 닉네임을 입력하세요"

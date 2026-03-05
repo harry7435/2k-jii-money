@@ -36,7 +36,7 @@ export default function CreateFamilyPage() {
           <CheckCircle size={56} className="text-teal-400" />
           <div>
             <h2 className="text-xl font-bold text-gray-900">가족이 만들어졌어요!</h2>
-            <p className="text-gray-500 text-sm mt-1">아래 코드로 가족을 초대하세요</p>
+            <p className="text-gray-600 text-sm mt-1">아래 코드로 가족을 초대하세요</p>
           </div>
           <div className="bg-gray-50 rounded-2xl p-6 space-y-4 w-full">
             <p className="text-3xl font-bold tracking-[0.3em] text-teal-500">
@@ -66,7 +66,7 @@ export default function CreateFamilyPage() {
 
       <div className="flex-1 flex flex-col justify-center px-6 gap-6">
         <div className="space-y-2">
-          <label className="text-sm text-gray-500">닉네임</label>
+          <label className="text-sm text-gray-600">닉네임</label>
           <input
             type="text"
             placeholder="사용할 닉네임을 입력하세요"

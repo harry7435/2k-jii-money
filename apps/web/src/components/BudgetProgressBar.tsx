@@ -24,7 +24,7 @@ export function BudgetProgressBar({ budgetAmount, spentAmount, color }: BudgetPr
           }}
         />
       </div>
-      <div className="flex justify-between text-xs text-gray-500">
+      <div className="flex justify-between text-xs text-gray-600">
         <span>{formatCurrency(spentAmount)} 사용</span>
         <span className={isOver ? 'text-red-500 font-semibold' : ''}>
           {isOver

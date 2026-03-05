@@ -60,22 +60,22 @@ export default function SettingsPage() {
         </div>
         <div>
           <p className="font-bold text-lg">{member.nickname}</p>
-          <p className="text-xs text-gray-400">가족 코드: {family.family_code}</p>
+          <p className="text-xs text-gray-500">가족 코드: {family.family_code}</p>
         </div>
       </div>
 
       {/* 가족 정보 */}
       <div className="bg-white mt-2 px-5 py-4 border-b space-y-3">
-        <p className="text-xs font-semibold text-gray-400 uppercase">가족 정보</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase">가족 정보</p>
 
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-700">가족 코드</span>
           <div className="flex items-center gap-2">
             <span className="font-bold tracking-widest text-teal-500">{family.family_code}</span>
-            <button onClick={handleCopy} className="text-gray-400 hover:text-teal-400">
+            <button onClick={handleCopy} className="text-gray-500 hover:text-teal-400">
               <Copy size={16} />
             </button>
-            <button onClick={() => setShowQR(true)} className="text-gray-400 hover:text-teal-400">
+            <button onClick={() => setShowQR(true)} className="text-gray-500 hover:text-teal-400">
               <QrCode size={16} />
             </button>
           </div>
@@ -87,7 +87,7 @@ export default function SettingsPage() {
           className="flex items-center justify-between w-full"
         >
           <span className="text-sm text-gray-700">가족 구성원</span>
-          <div className="flex items-center gap-1 text-gray-400">
+          <div className="flex items-center gap-1 text-gray-500">
             <Users size={16} />
             <span className="text-sm">{members.length}명</span>
           </div>
@@ -96,18 +96,18 @@ export default function SettingsPage() {
 
       {/* 카테고리 관리 */}
       <div className="bg-white mt-2 px-5 py-4 border-b">
-        <p className="text-xs font-semibold text-gray-400 uppercase mb-3">카테고리 관리</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">카테고리 관리</p>
         <div className="space-y-2">
           {categories.map((cat) => (
             <div key={cat.id} className="flex items-center gap-3">
               <CategoryIcon icon={cat.icon} color={cat.color} size="sm" />
               <span className="flex-1 text-sm">{cat.name}</span>
               {cat.is_default ? (
-                <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">기본</span>
+                <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">기본</span>
               ) : (
                 <button
                   onClick={() => deleteMutation.mutate(cat.id)}
-                  className="text-gray-300 hover:text-red-400"
+                  className="text-gray-400 hover:text-red-400"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -138,7 +138,7 @@ export default function SettingsPage() {
             <p className="font-bold">가족 코드 QR</p>
             <QRCode value={family.family_code} size={200} />
             <p className="text-2xl font-bold tracking-[0.3em] text-teal-500">{family.family_code}</p>
-            <p className="text-xs text-gray-400">탭하여 닫기</p>
+            <p className="text-xs text-gray-500">탭하여 닫기</p>
           </div>
         </div>
       )}

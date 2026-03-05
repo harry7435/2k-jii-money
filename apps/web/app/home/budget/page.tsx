@@ -81,7 +81,7 @@ export default function BudgetPage() {
       {/* 카테고리별 예산 목록 */}
       <div className="flex-1 overflow-y-auto mt-3 space-y-2 px-4 pb-2">
         {budgets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-sm">
+          <div className="flex flex-col items-center justify-center h-40 text-gray-500 text-sm">
             <span className="material-symbols-outlined text-4xl mb-2">account_balance_wallet</span>
             예산을 설정해보세요
           </div>
@@ -96,7 +96,7 @@ export default function BudgetPage() {
                   <CategoryIcon icon={cat.icon} color={cat.color} size="md" />
                   <div className="flex-1">
                     <p className="font-semibold text-sm">{cat.name}</p>
-                    <p className="text-xs text-gray-400">예산 {formatCurrency(budget.amount)}</p>
+                    <p className="text-xs text-gray-500">예산 {formatCurrency(budget.amount)}</p>
                   </div>
                 </div>
                 <BudgetProgressBar

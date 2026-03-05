@@ -39,13 +39,13 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
             >
               <span
                 className={`material-symbols-outlined text-2xl ${
-                  active ? 'text-teal-400' : 'text-gray-400'
+                  active ? 'text-teal-400' : 'text-gray-500'
                 }`}
               >
                 {tab.icon}
               </span>
               <span
-                className={`text-[10px] ${active ? 'text-teal-400 font-semibold' : 'text-gray-400'}`}
+                className={`text-[10px] ${active ? 'text-teal-400 font-semibold' : 'text-gray-500'}`}
               >
                 {tab.label}
               </span>
