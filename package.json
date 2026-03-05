@@ -1,0 +1,15 @@
+{
+  "name": "2k-jii-money",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@2k-jii-money/web",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=@2k-jii-money/web",
+    "type-gen": "supabase gen types typescript --project-id tqksmsknzpvnwuelgwya > packages/supabase-types/database.types.ts"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
