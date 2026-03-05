@@ -55,7 +55,7 @@ export default function JoinFamilyPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      <div className="flex items-center px-4 py-3 border-b">
+      <div className="flex items-center px-4 py-3 border-b border-gray-100">
         <button onClick={() => router.back()} className="p-1">
           <ArrowLeft size={20} />
         </button>

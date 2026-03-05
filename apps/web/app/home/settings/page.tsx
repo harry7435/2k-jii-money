@@ -54,7 +54,7 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* 프로필 */}
-      <div className="flex items-center gap-4 px-5 py-6 bg-white border-b">
+      <div className="flex items-center gap-4 px-5 py-6 bg-white border-b border-gray-100">
         <div className="w-14 h-14 rounded-full bg-teal-400 flex items-center justify-center text-white text-2xl font-bold">
           {member.nickname[0]}
         </div>
@@ -65,7 +65,7 @@ export default function SettingsPage() {
       </div>
 
       {/* 가족 정보 */}
-      <div className="bg-white mt-2 px-5 py-4 border-b space-y-3">
+      <div className="bg-white mt-2 px-5 py-4 border-b border-gray-100 space-y-3">
         <p className="text-xs font-semibold text-gray-500 uppercase">가족 정보</p>
 
         <div className="flex items-center justify-between">
@@ -95,7 +95,7 @@ export default function SettingsPage() {
       </div>
 
       {/* 카테고리 관리 */}
-      <div className="bg-white mt-2 px-5 py-4 border-b">
+      <div className="bg-white mt-2 px-5 py-4 border-b border-gray-100">
         <p className="text-xs font-semibold text-gray-500 uppercase mb-3">카테고리 관리</p>
         <div className="space-y-2">
           {categories.map((cat) => (

@@ -28,7 +28,7 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
       <div className="flex-1 overflow-y-auto pb-20">{children}</div>
 
       {/* Bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t flex z-40">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex z-40">
         {TABS.map((tab) => {
           const active = pathname === tab.href
           return (

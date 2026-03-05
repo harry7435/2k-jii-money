@@ -10,7 +10,7 @@ interface MonthSelectorProps {
 
 export function MonthSelector({ yearMonth, onChange }: MonthSelectorProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white border-b">
+    <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
       <button
         onClick={() => onChange(prevMonth(yearMonth))}
         className="p-1 rounded-full hover:bg-gray-100"
