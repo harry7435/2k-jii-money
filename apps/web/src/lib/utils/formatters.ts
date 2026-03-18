@@ -10,6 +10,11 @@ export function formatDate(date: string | Date): string {
   return format(d, 'M월 d일 (EEE)', { locale: ko })
 }
 
+export function formatTime(dateTime: string): string {
+  const d = parseISO(dateTime)
+  return format(d, 'a h:mm', { locale: ko })
+}
+
 export function formatYearMonth(yearMonth: string): string {
   const [year, month] = yearMonth.split('-')
   return `${year}년 ${parseInt(month)}월`
