@@ -55,31 +55,10 @@ apps/web/
 
 ## 핵심 패턴 및 규칙
 
-### Supabase 클라이언트
-- 클라이언트 컴포넌트: `src/lib/supabase/client.ts`의 `createClient()` 사용
-- 서버 컴포넌트/Route Handler: `src/lib/supabase/server.ts`의 `createClient()` 사용
-- 현재 타입 호환성 문제로 `(supabase as any)` 캐스팅 사용 중 — 의도된 패턴
-- 공유 타입은 `@2k-jii-money/supabase-types` 패키지에서 import
-
-### 전역 상태 (Zustand)
-- `useFamilyStore`: `family`, `member` 저장 (localStorage persist)
-- 인증 없음 — 가족 코드 기반 익명 접근
-- `home/layout.tsx`에서 `family` 없으면 `/welcome`으로 리다이렉트
-
-### 스타일
-- Tailwind CSS v4 사용 (v3 문법과 다름 — `@apply` 등 주의)
-- 모바일 우선 레이아웃: `max-w-md mx-auto`로 고정 너비
-- 주 색상: teal-400 (활성 탭, 강조)
-- 아이콘: `<span className="material-symbols-outlined">아이콘명</span>`
-
-### 모달 패턴
-- 모달은 별도 컴포넌트로 분리 (`src/components/`)
-- `isOpen: boolean`, `onClose: () => void` props로 제어
-
-### 데이터 페칭
-- 모든 DB 함수는 `src/lib/supabase/queries.ts`에 집중
-- TanStack React Query로 캐싱/로딩 상태 관리
-- yearMonth 형식: `"YYYY-MM"` 문자열
+상세 규칙은 `.claude/rules/` 참조:
+- `supabase.md` — Supabase 클라이언트 사용, 데이터 페칭 패턴
+- `zustand-hydration.md` — Zustand 전역 상태, persist hydration 및 `useHasHydrated()` 훅
+- `style.md` — Tailwind v4, 아이콘, 모달 패턴
 
 ## 개발 명령어
 
