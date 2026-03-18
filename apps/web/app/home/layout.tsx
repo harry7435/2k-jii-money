@@ -1,27 +1,32 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect } from 'react'
-import { useFamilyStore } from '@/src/lib/store/familyStore'
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useFamilyStore, useHasHydrated } from "@/src/lib/store/familyStore";
 
 const TABS = [
-  { href: '/home/transactions', icon: 'receipt_long', label: '내역' },
-  { href: '/home/budget', icon: 'account_balance_wallet', label: '예산' },
-  { href: '/home/dashboard', icon: 'bar_chart', label: '대시보드' },
-  { href: '/home/settings', icon: 'settings', label: '설정' },
-]
+  { href: "/home/transactions", icon: "receipt_long", label: "내역" },
+  { href: "/home/budget", icon: "account_balance_wallet", label: "예산" },
+  { href: "/home/dashboard", icon: "bar_chart", label: "대시보드" },
+  { href: "/home/settings", icon: "settings", label: "설정" },
+];
 
-export default function HomeLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const family = useFamilyStore((s) => s.family)
+export default function HomeLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const family = useFamilyStore((s) => s.family);
+  const hydrated = useHasHydrated();
 
   useEffect(() => {
-    if (!family) router.replace('/welcome')
-  }, [family, router])
+    if (hydrated && !family) router.replace("/welcome");
+  }, [hydrated, family, router]);
 
-  if (!family) return null
+  if (!hydrated || !family) return null;
 
   return (
     <div className="flex flex-col min-h-screen max-w-md mx-auto bg-white">
@@ -30,7 +35,7 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
       {/* Bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex z-40">
         {TABS.map((tab) => {
-          const active = pathname === tab.href
+          const active = pathname === tab.href;
           return (
             <Link
               key={tab.href}
@@ -39,20 +44,20 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
             >
               <span
                 className={`material-symbols-outlined text-2xl ${
-                  active ? 'text-teal-400' : 'text-gray-500'
+                  active ? "text-teal-400" : "text-gray-500"
                 }`}
               >
                 {tab.icon}
               </span>
               <span
-                className={`text-[10px] ${active ? 'text-teal-400 font-semibold' : 'text-gray-500'}`}
+                className={`text-[10px] ${active ? "text-teal-400 font-semibold" : "text-gray-500"}`}
               >
                 {tab.label}
               </span>
             </Link>
-          )
+          );
         })}
       </nav>
     </div>
-  )
+  );
 }

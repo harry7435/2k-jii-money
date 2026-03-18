@@ -1,15 +1,16 @@
-'use client'
+"use client";
 
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { Family, Member } from '@2k-jii-money/supabase-types'
+import { useSyncExternalStore } from "react";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { Family, Member } from "@2k-jii-money/supabase-types";
 
 interface FamilyStore {
-  family: Family | null
-  member: Member | null
-  setFamily: (family: Family) => void
-  setMember: (member: Member) => void
-  clear: () => void
+  family: Family | null;
+  member: Member | null;
+  setFamily: (family: Family) => void;
+  setMember: (member: Member) => void;
+  clear: () => void;
 }
 
 export const useFamilyStore = create<FamilyStore>()(
@@ -21,6 +22,15 @@ export const useFamilyStore = create<FamilyStore>()(
       setMember: (member) => set({ member }),
       clear: () => set({ family: null, member: null }),
     }),
-    { name: 'jii-money-family' }
-  )
-)
+    { name: "jii-money-family" },
+  ),
+);
+
+const subscribe = (onStoreChange: () => void) =>
+  useFamilyStore.persist.onFinishHydration(onStoreChange);
+const getSnapshot = () => useFamilyStore.persist.hasHydrated();
+const getServerSnapshot = () => false;
+
+export function useHasHydrated() {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
