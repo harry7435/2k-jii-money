@@ -177,6 +177,34 @@ export async function addTransaction(params: {
   return data as Transaction
 }
 
+export async function updateTransaction(
+  id: string,
+  params: {
+    categoryId: string
+    type: 'income' | 'expense'
+    amount: number
+    memo?: string
+    date: string
+  }
+): Promise<Transaction> {
+  const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('transactions')
+    .update({
+      category_id: params.categoryId,
+      type: params.type,
+      amount: params.amount,
+      memo: params.memo || null,
+      date: params.date,
+    })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data as Transaction
+}
+
 export async function deleteTransaction(id: string): Promise<void> {
   const supabase = createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

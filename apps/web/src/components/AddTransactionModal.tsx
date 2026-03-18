@@ -1,19 +1,20 @@
-"use client";
+'use client'
 
-import { useState, useCallback, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { X } from "lucide-react";
-import type { Category } from "@2k-jii-money/supabase-types";
-import { addTransaction } from "@/src/lib/supabase/queries";
-import { CategoryIcon } from "./CategoryIcon";
+import { useState, useCallback, useRef } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { format } from 'date-fns'
+import { X } from 'lucide-react'
+import type { Category, Transaction } from '@2k-jii-money/supabase-types'
+import { addTransaction, updateTransaction } from '@/src/lib/supabase/queries'
+import { CategoryIcon } from './CategoryIcon'
 
 interface AddTransactionModalProps {
-  familyId: string;
-  memberId: string;
-  categories: Category[];
-  yearMonth: string;
-  onClose: () => void;
+  familyId: string
+  memberId: string
+  categories: Category[]
+  yearMonth: string
+  editingTransaction?: Transaction
+  onClose: () => void
 }
 
 export function AddTransactionModal({
@@ -21,71 +22,102 @@ export function AddTransactionModal({
   memberId,
   categories,
   yearMonth,
+  editingTransaction,
   onClose,
 }: AddTransactionModalProps) {
-  const qc = useQueryClient();
-  const [type, setType] = useState<"expense" | "income">("expense");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [categoryId, setCategoryId] = useState("");
-  const [memo, setMemo] = useState("");
+  const qc = useQueryClient()
+  const isEdit = !!editingTransaction
 
-  const [savedCount, setSavedCount] = useState(0);
-  const amountRef = useRef<HTMLInputElement>(null);
+  const [type, setType] = useState<'expense' | 'income'>(
+    editingTransaction?.type ?? 'expense'
+  )
+  const [amount, setAmount] = useState(
+    editingTransaction ? editingTransaction.amount.toLocaleString('ko-KR') : ''
+  )
+  const [date, setDate] = useState(
+    editingTransaction?.date ?? format(new Date(), 'yyyy-MM-dd')
+  )
+  const [categoryId, setCategoryId] = useState(
+    editingTransaction?.category_id ?? ''
+  )
+  const [memo, setMemo] = useState(editingTransaction?.memo ?? '')
+
+  const [savedCount, setSavedCount] = useState(0)
+  const amountRef = useRef<HTMLInputElement>(null)
 
   const resetForm = useCallback(() => {
-    setAmount("");
-    setCategoryId("");
-    setMemo("");
-  }, []);
+    setAmount('')
+    setCategoryId('')
+    setMemo('')
+  }, [])
 
-  const mutation = useMutation({
+  const invalidateQueries = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ['transactions', familyId, yearMonth] })
+    qc.invalidateQueries({ queryKey: ['summary', familyId, yearMonth] })
+  }, [qc, familyId, yearMonth])
+
+  const addMutation = useMutation({
     mutationFn: () =>
       addTransaction({
         familyId,
         memberId,
         categoryId,
         type,
-        amount: parseInt(amount.replace(/,/g, ""), 10),
+        amount: parseInt(amount.replace(/,/g, ''), 10),
         memo: memo || undefined,
         date,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["transactions", familyId, yearMonth] });
-      qc.invalidateQueries({ queryKey: ["summary", familyId, yearMonth] });
-      setSavedCount((c) => c + 1);
-      resetForm();
-      // 저장 후 금액 입력에 포커스
-      setTimeout(() => amountRef.current?.focus(), 0);
+      invalidateQueries()
+      setSavedCount((c) => c + 1)
+      resetForm()
+      setTimeout(() => amountRef.current?.focus(), 0)
     },
-  });
+  })
+
+  const editMutation = useMutation({
+    mutationFn: () =>
+      updateTransaction(editingTransaction!.id, {
+        categoryId,
+        type,
+        amount: parseInt(amount.replace(/,/g, ''), 10),
+        memo: memo || undefined,
+        date,
+      }),
+    onSuccess: () => {
+      invalidateQueries()
+      onClose()
+    },
+  })
+
+  const mutation = isEdit ? editMutation : addMutation
 
   const filteredCategories = categories.filter((c) =>
-    type === "income"
-      ? ["급여", "기타수입"].includes(c.name) || !c.is_default
-      : !["급여", "기타수입"].includes(c.name),
-  );
+    type === 'income'
+      ? ['급여', '기타수입'].includes(c.name) || !c.is_default
+      : !['급여', '기타수입'].includes(c.name)
+  )
 
   const handleAmountChange = (v: string) => {
-    const digits = v.replace(/[^0-9]/g, "");
-    setAmount(digits ? parseInt(digits, 10).toLocaleString("ko-KR") : "");
-  };
+    const digits = v.replace(/[^0-9]/g, '')
+    setAmount(digits ? parseInt(digits, 10).toLocaleString('ko-KR') : '')
+  }
 
-  const canSubmit = amount && categoryId && !mutation.isPending;
+  const canSubmit = amount && categoryId && !mutation.isPending
 
   const handleSubmit = useCallback(() => {
-    if (canSubmit) mutation.mutate();
-  }, [canSubmit, mutation]);
+    if (canSubmit) mutation.mutate()
+  }, [canSubmit, mutation])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-        e.preventDefault();
-        handleSubmit();
+      if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+        e.preventDefault()
+        handleSubmit()
       }
     },
-    [handleSubmit],
-  );
+    [handleSubmit]
+  )
 
   return (
     <div
@@ -99,7 +131,7 @@ export function AddTransactionModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">내역 추가</h2>
+          <h2 className="text-lg font-bold">{isEdit ? '내역 수정' : '내역 추가'}</h2>
           <button onClick={onClose} className="p-1">
             <X size={20} />
           </button>
@@ -107,18 +139,18 @@ export function AddTransactionModal({
 
         {/* Type toggle */}
         <div className="flex rounded-xl overflow-hidden border border-gray-200">
-          {(["expense", "income"] as const).map((t) => (
+          {(['expense', 'income'] as const).map((t) => (
             <button
               key={t}
               onClick={() => {
-                setType(t);
-                setCategoryId("");
+                setType(t)
+                setCategoryId('')
               }}
               className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-                type === t ? "bg-teal-400 text-white" : "bg-white text-gray-600"
+                type === t ? 'bg-teal-400 text-white' : 'bg-white text-gray-600'
               }`}
             >
-              {t === "expense" ? "지출" : "수입"}
+              {t === 'expense' ? '지출' : '수입'}
             </button>
           ))}
         </div>
@@ -161,8 +193,8 @@ export function AddTransactionModal({
                 onClick={() => setCategoryId(cat.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors ${
                   categoryId === cat.id
-                    ? "border-teal-400 bg-teal-50 text-teal-700"
-                    : "border-gray-200 text-gray-600"
+                    ? 'border-teal-400 bg-teal-50 text-teal-700'
+                    : 'border-gray-200 text-gray-600'
                 }`}
               >
                 <CategoryIcon icon={cat.icon} color={cat.color} size="sm" />
@@ -174,9 +206,7 @@ export function AddTransactionModal({
 
         {/* Memo */}
         <div>
-          <label className="text-xs text-gray-600 mb-1 block">
-            메모 (선택)
-          </label>
+          <label className="text-xs text-gray-600 mb-1 block">메모 (선택)</label>
           <input
             type="text"
             placeholder="메모 입력"
@@ -193,23 +223,23 @@ export function AddTransactionModal({
             disabled={!canSubmit}
             className="flex-1 py-3 rounded-xl bg-teal-400 text-white font-bold disabled:opacity-40"
           >
-            {mutation.isPending ? "저장 중..." : "저장"}
-            {savedCount > 0 && !mutation.isPending && (
-              <span className="ml-2 text-sm opacity-80">
-                ({savedCount}건 저장됨)
-              </span>
+            {mutation.isPending
+              ? isEdit ? '수정 중...' : '저장 중...'
+              : isEdit ? '수정' : '저장'}
+            {!isEdit && savedCount > 0 && !mutation.isPending && (
+              <span className="ml-2 text-sm opacity-80">({savedCount}건 저장됨)</span>
             )}
           </button>
         </div>
         <p className="text-xs text-gray-400 text-center hidden md:block">
-          Enter로 저장 · 배경 클릭 또는 X로 닫기
+          Enter로 {isEdit ? '수정' : '저장'} · 배경 클릭 또는 X로 닫기
         </p>
         {mutation.isError && (
           <p className="text-red-500 text-sm text-center">
-            저장에 실패했습니다.
+            {isEdit ? '수정에' : '저장에'} 실패했습니다.
           </p>
         )}
       </div>
     </div>
-  );
+  )
 }
