@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { useFamilyStore } from '@/src/lib/store/familyStore'
 import { getTransactions, getCategories, getMembers, deleteTransaction, getMonthlySummary } from '@/src/lib/supabase/queries'
-import { getCurrentYearMonth, formatCurrency, formatDate } from '@/src/lib/utils/formatters'
+import { getCurrentYearMonth, formatCurrency, formatDate, formatTime } from '@/src/lib/utils/formatters'
 import { MonthSelector } from '@/src/components/MonthSelector'
 import { AddTransactionModal } from '@/src/components/AddTransactionModal'
 import { CategoryIcon } from '@/src/components/CategoryIcon'
@@ -16,6 +16,7 @@ export default function TransactionsPage() {
   const qc = useQueryClient()
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth)
   const [showModal, setShowModal] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
 
   const familyId = family?.id ?? ''
 
@@ -102,7 +103,11 @@ export default function TransactionsPage() {
                 return (
                   <div
                     key={t.id}
-                    className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-50"
+                    className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => {
+                      setEditingTransaction(t)
+                      setShowModal(true)
+                    }}
                   >
                     {cat && <CategoryIcon icon={cat.icon} color={cat.color} size="md" />}
                     <div className="flex-1 min-w-0">
@@ -110,6 +115,7 @@ export default function TransactionsPage() {
                       <p className="text-xs text-gray-500">
                         {mem?.nickname ?? ''}
                         {t.memo && ` · ${t.memo}`}
+                        {t.created_at && ` · ${formatTime(t.created_at)}`}
                       </p>
                     </div>
                     <div className="text-right flex items-center gap-2">
@@ -122,7 +128,10 @@ export default function TransactionsPage() {
                         {formatCurrency(t.amount)}
                       </p>
                       <button
-                        onClick={() => deleteMutation.mutate(t.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteMutation.mutate(t.id)
+                        }}
                         className="text-gray-400 hover:text-red-400"
                       >
                         <Trash2 size={14} />
@@ -138,7 +147,10 @@ export default function TransactionsPage() {
 
       {/* FAB */}
       <button
-        onClick={() => setShowModal(true)}
+        onClick={() => {
+          setEditingTransaction(null)
+          setShowModal(true)
+        }}
         className="fixed bottom-20 right-4 w-14 h-14 bg-teal-400 rounded-full flex items-center justify-center shadow-lg"
       >
         <Plus size={28} className="text-white" />
@@ -150,7 +162,11 @@ export default function TransactionsPage() {
           memberId={member.id}
           categories={categories}
           yearMonth={yearMonth}
-          onClose={() => setShowModal(false)}
+          editingTransaction={editingTransaction ?? undefined}
+          onClose={() => {
+            setShowModal(false)
+            setEditingTransaction(null)
+          }}
         />
       )}
     </div>
