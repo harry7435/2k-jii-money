@@ -53,7 +53,9 @@ export function AddTransactionModal({
   const [date, setDate] = useState(
     editingTransaction?.date ?? format(new Date(), 'yyyy-MM-dd')
   )
-  const [time, setTime] = useState(editingTransaction?.time ?? '')
+  const [time, setTime] = useState(
+    editingTransaction?.time ?? (!isEdit ? format(new Date(), 'HH:mm') : '')
+  )
   const [memo, setMemo] = useState(editingTransaction?.memo ?? '')
   const [paymentSourceId, setPaymentSourceId] = useState(
     editingTransaction?.payment_source_id ?? ''
