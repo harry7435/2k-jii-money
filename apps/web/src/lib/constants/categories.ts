@@ -13,32 +13,22 @@ export const DEFAULT_CATEGORY_TREE: CategoryNode[] = [
   {
     name: '수입', icon: 'trending_up', color: '#82E0AA', isDefault: true,
     children: [
-      {
-        name: '수입', icon: 'payments', color: '#82E0AA', isDefault: true,
-        children: [
-          { name: '익준급여', icon: 'payments', color: '#82E0AA', isDefault: true },
-          { name: '현지급여', icon: 'payments', color: '#82E0AA', isDefault: true },
-          { name: '금융수입', icon: 'account_balance', color: '#85C1E9', isDefault: true },
-          { name: '기타부수입', icon: 'add_circle', color: '#85C1E9', isDefault: true },
-          { name: '부모님용돈', icon: 'volunteer_activism', color: '#82E0AA', isDefault: true },
-        ],
-      },
+      { name: '익준급여', icon: 'payments', color: '#82E0AA', isDefault: true },
+      { name: '현지급여', icon: 'payments', color: '#82E0AA', isDefault: true },
+      { name: '금융수입', icon: 'account_balance', color: '#85C1E9', isDefault: true },
+      { name: '기타부수입', icon: 'add_circle', color: '#85C1E9', isDefault: true },
+      { name: '부모님용돈', icon: 'volunteer_activism', color: '#82E0AA', isDefault: true },
     ],
   },
   {
     name: '저축', icon: 'savings', color: '#45B7D1', isDefault: true,
     children: [
-      {
-        name: '저축', icon: 'savings', color: '#45B7D1', isDefault: true,
-        children: [
-          { name: '주택청약', icon: 'home', color: '#45B7D1', isDefault: true },
-          { name: '연금', icon: 'elderly', color: '#45B7D1', isDefault: true },
-          { name: '투자', icon: 'trending_up', color: '#45B7D1', isDefault: true },
-          { name: '적금', icon: 'savings', color: '#45B7D1', isDefault: true },
-          { name: '비상금', icon: 'shield', color: '#45B7D1', isDefault: true },
-          { name: '대출상환', icon: 'money_off', color: '#45B7D1', isDefault: true },
-        ],
-      },
+      { name: '주택청약', icon: 'home', color: '#45B7D1', isDefault: true },
+      { name: '연금', icon: 'elderly', color: '#45B7D1', isDefault: true },
+      { name: '투자', icon: 'trending_up', color: '#45B7D1', isDefault: true },
+      { name: '적금', icon: 'savings', color: '#45B7D1', isDefault: true },
+      { name: '비상금', icon: 'shield', color: '#45B7D1', isDefault: true },
+      { name: '대출상환', icon: 'money_off', color: '#45B7D1', isDefault: true },
     ],
   },
   {
