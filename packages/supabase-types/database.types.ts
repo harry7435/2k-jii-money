@@ -62,6 +62,9 @@ export type Database = {
           icon: string
           color: string
           is_default: boolean
+          level: number
+          parent_id: string | null
+          is_fixed: boolean
         }
         Insert: {
           id: string
@@ -70,6 +73,9 @@ export type Database = {
           icon: string
           color: string
           is_default?: boolean
+          level?: number
+          parent_id?: string | null
+          is_fixed?: boolean
         }
         Update: {
           id?: string
@@ -78,10 +84,52 @@ export type Database = {
           icon?: string
           color?: string
           is_default?: boolean
+          level?: number
+          parent_id?: string | null
+          is_fixed?: boolean
         }
         Relationships: [
           {
             foreignKeyName: 'categories_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'categories_parent_id_fkey'
+            columns: ['parent_id']
+            isOneToOne: false
+            referencedRelation: 'categories'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      payment_sources: {
+        Row: {
+          id: string
+          family_id: string
+          name: string
+          is_default: boolean
+          sort_order: number
+        }
+        Insert: {
+          id: string
+          family_id: string
+          name: string
+          is_default?: boolean
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          name?: string
+          is_default?: boolean
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'payment_sources_family_id_fkey'
             columns: ['family_id']
             isOneToOne: false
             referencedRelation: 'families'
@@ -95,10 +143,12 @@ export type Database = {
           family_id: string
           member_id: string
           category_id: string
-          type: 'income' | 'expense'
+          type: 'income' | 'expense' | 'savings'
           amount: number
           memo: string | null
           date: string
+          payment_source_id: string | null
+          evaluation: 'consumption' | 'waste' | 'investment' | null
           created_at: string
         }
         Insert: {
@@ -106,10 +156,12 @@ export type Database = {
           family_id: string
           member_id: string
           category_id: string
-          type: 'income' | 'expense'
+          type: 'income' | 'expense' | 'savings'
           amount: number
           memo?: string | null
           date: string
+          payment_source_id?: string | null
+          evaluation?: 'consumption' | 'waste' | 'investment' | null
           created_at?: string | null
         }
         Update: {
@@ -117,10 +169,12 @@ export type Database = {
           family_id?: string
           member_id?: string
           category_id?: string
-          type?: 'income' | 'expense'
+          type?: 'income' | 'expense' | 'savings'
           amount?: number
           memo?: string | null
           date?: string
+          payment_source_id?: string | null
+          evaluation?: 'consumption' | 'waste' | 'investment' | null
           created_at?: string | null
         }
         Relationships: [
@@ -143,6 +197,13 @@ export type Database = {
             columns: ['category_id']
             isOneToOne: false
             referencedRelation: 'categories'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'transactions_payment_source_id_fkey'
+            columns: ['payment_source_id']
+            isOneToOne: false
+            referencedRelation: 'payment_sources'
             referencedColumns: ['id']
           }
         ]
