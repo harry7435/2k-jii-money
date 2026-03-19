@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useMemo } from 'react'
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
 import { X } from 'lucide-react'
@@ -35,6 +35,11 @@ export function AddTransactionModal({
 }: AddTransactionModalProps) {
   const qc = useQueryClient()
   const isEdit = !!editingTransaction
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   // 수정 모드 시 카테고리 경로 복원
   const editPath = useMemo(() => {
