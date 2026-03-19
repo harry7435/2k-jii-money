@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { X } from 'lucide-react'
 import type { Category, Transaction, PaymentSource } from '@2k-jii-money/supabase-types'
 import type { EvaluationType } from '@2k-jii-money/supabase-types'
@@ -53,9 +53,12 @@ export function AddTransactionModal({
   const [date, setDate] = useState(
     editingTransaction?.date ?? format(new Date(), 'yyyy-MM-dd')
   )
-  const [time, setTime] = useState(
-    editingTransaction?.time ?? (!isEdit ? format(new Date(), 'HH:mm') : '')
-  )
+  const [time, setTime] = useState(() => {
+    if (editingTransaction?.time) return editingTransaction.time
+    if (!isEdit) return format(new Date(), 'HH:mm')
+    if (editingTransaction?.created_at) return format(parseISO(editingTransaction.created_at), 'HH:mm')
+    return ''
+  })
   const [memo, setMemo] = useState(editingTransaction?.memo ?? '')
   const [paymentSourceId, setPaymentSourceId] = useState(
     editingTransaction?.payment_source_id ?? ''
