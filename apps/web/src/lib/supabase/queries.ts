@@ -165,59 +165,70 @@ export async function addCategory(
   return data as Category
 }
 
-/** 기존 가족에 누락된 기본 소분류를 추가 (중분류 이름으로 매칭) */
+/** 기존 가족에 누락된 기본 카테고리를 추가 (멱등)
+ *  - "parentId:name" 키로 존재 여부를 확인하여 없는 것만 삽입
+ *  - 수입/저축처럼 중분류 없이 바로 소분류가 오는 구조도 처리
+ */
 export async function insertMissingSubCategories(
   familyId: string,
   existingCategories: Category[]
 ): Promise<number> {
   const supabase = createClient()
+  let insertCount = 0
 
-  // 중분류 맵: name → Category
-  const middleByName = new Map(
-    existingCategories.filter((c) => c.level === 2).map((c) => [c.name, c])
+  // 대분류 맵
+  const majorByName = new Map(
+    existingCategories.filter((c) => c.level === 1).map((c) => [c.name, c])
   )
 
-  // 이미 있는 소분류: parent_id → name set
-  const existingSubNames = new Map<string, Set<string>>()
-  for (const cat of existingCategories.filter((c) => c.level === 3)) {
-    if (!existingSubNames.has(cat.parent_id!)) {
-      existingSubNames.set(cat.parent_id!, new Set())
-    }
-    existingSubNames.get(cat.parent_id!)!.add(cat.name)
+  // 기존 카테고리 인덱스: "parentId:name" → Category
+  const existingByKey = new Map<string, Category>()
+  for (const c of existingCategories) {
+    existingByKey.set(`${c.parent_id ?? 'root'}:${c.name}`, c)
   }
 
-  // DEFAULT_CATEGORY_TREE를 순회하여 없는 소분류만 수집
-  const toInsert: object[] = []
-  for (const major of DEFAULT_CATEGORY_TREE) {
-    for (const middle of major.children ?? []) {
-      const existingMiddle = middleByName.get(middle.name)
-      if (!existingMiddle) continue
+  // 재귀적으로 누락된 노드만 삽입
+  async function ensureNode(
+    node: CategoryNode,
+    level: number,
+    parentId: string
+  ): Promise<string> {
+    const key = `${parentId}:${node.name}`
+    const existing = existingByKey.get(key)
+    if (existing) return existing.id
 
-      const existingSubs = existingSubNames.get(existingMiddle.id) ?? new Set()
-      for (const sub of middle.children ?? []) {
-        if (!existingSubs.has(sub.name)) {
-          toInsert.push({
-            id: uuidv4(),
-            family_id: familyId,
-            name: sub.name,
-            icon: sub.icon,
-            color: sub.color,
-            is_default: true,
-            level: 3,
-            parent_id: existingMiddle.id,
-            is_fixed: false,
-          })
-        }
+    const newId = uuidv4()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from('categories').insert({
+      id: newId,
+      family_id: familyId,
+      name: node.name,
+      icon: node.icon,
+      color: node.color,
+      is_default: true,
+      level,
+      parent_id: parentId,
+      is_fixed: node.isFixed ?? false,
+    })
+    if (error) throw error
+    insertCount++
+    existingByKey.set(key, { id: newId, name: node.name, level, parent_id: parentId } as Category)
+    return newId
+  }
+
+  for (const major of DEFAULT_CATEGORY_TREE) {
+    const existingMajor = majorByName.get(major.name)
+    if (!existingMajor) continue
+
+    for (const child of major.children ?? []) {
+      const childId = await ensureNode(child, 2, existingMajor.id)
+      for (const sub of child.children ?? []) {
+        await ensureNode(sub, 3, childId)
       }
     }
   }
 
-  if (toInsert.length === 0) return 0
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('categories').insert(toInsert)
-  if (error) throw error
-  return toInsert.length
+  return insertCount
 }
 
 export async function updateCategory(
