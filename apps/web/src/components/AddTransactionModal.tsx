@@ -185,10 +185,11 @@ export function AddTransactionModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white rounded-t-2xl p-5 space-y-3 max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-md bg-white rounded-t-2xl flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
+      <div className="flex-1 overflow-y-auto p-5 space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">{isEdit ? '내역 수정' : '내역 추가'}</h2>
@@ -355,30 +356,32 @@ export function AddTransactionModal({
           />
         </div>
 
-        {/* 저장 */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="flex-1 py-3 rounded-xl bg-teal-400 text-white font-bold disabled:opacity-40"
-          >
-            {mutation.isPending
-              ? isEdit ? '수정 중...' : '저장 중...'
-              : isEdit ? '수정' : '저장'}
-            {!isEdit && savedCount > 0 && !mutation.isPending && (
-              <span className="ml-2 text-sm opacity-80">({savedCount}건 저장됨)</span>
-            )}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 text-center hidden md:block">
-          Enter로 {isEdit ? '수정' : '저장'} · 배경 클릭 또는 X로 닫기
-        </p>
+      </div>
+
+      {/* 저장 버튼 — 스크롤 영역 밖, 항상 하단 고정 */}
+      <div className="px-5 pb-5 pt-3 border-t border-gray-100 bg-white">
         {mutation.isError && (
-          <p className="text-red-500 text-sm text-center">
+          <p className="text-red-500 text-sm text-center mb-2">
             {isEdit ? '수정에' : '저장에'} 실패했습니다.
           </p>
         )}
+        <button
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="w-full py-3 rounded-xl bg-teal-400 text-white font-bold disabled:opacity-40"
+        >
+          {mutation.isPending
+            ? isEdit ? '수정 중...' : '저장 중...'
+            : isEdit ? '수정' : '저장'}
+          {!isEdit && savedCount > 0 && !mutation.isPending && (
+            <span className="ml-2 text-sm opacity-80">({savedCount}건 저장됨)</span>
+          )}
+        </button>
+        <p className="text-xs text-gray-400 text-center mt-2 hidden md:block">
+          Enter로 {isEdit ? '수정' : '저장'} · 배경 클릭 또는 X로 닫기
+        </p>
       </div>
     </div>
+  </div>
   )
 }
