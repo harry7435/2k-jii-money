@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { useFamilyStore } from '@/src/lib/store/familyStore'
-import { getTransactions, getCategories, getMembers, deleteTransaction, getMonthlySummary } from '@/src/lib/supabase/queries'
+import { getTransactions, getCategories, getMembers, deleteTransaction, getMonthlySummary, getPaymentSources } from '@/src/lib/supabase/queries'
 import { getCurrentYearMonth, formatCurrency, formatDate, formatTime } from '@/src/lib/utils/formatters'
+import { EVALUATION_LABELS } from '@/src/lib/constants/categories'
+import { getCategoryPath } from '@/src/lib/utils/categoryUtils'
 import { MonthSelector } from '@/src/components/MonthSelector'
 import { AddTransactionModal } from '@/src/components/AddTransactionModal'
 import { CategoryIcon } from '@/src/components/CategoryIcon'
@@ -38,6 +40,12 @@ export default function TransactionsPage() {
     enabled: !!familyId,
   })
 
+  const { data: paymentSources = [] } = useQuery({
+    queryKey: ['paymentSources', familyId],
+    queryFn: () => getPaymentSources(familyId),
+    enabled: !!familyId,
+  })
+
   const { data: summary } = useQuery({
     queryKey: ['summary', familyId, yearMonth],
     queryFn: () => getMonthlySummary(familyId, yearMonth),
@@ -52,8 +60,9 @@ export default function TransactionsPage() {
     },
   })
 
-  const catMap = Object.fromEntries(categories.map((c) => [c.id, c]))
+  const catMap = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c])), [categories])
   const memberMap = Object.fromEntries(members.map((m) => [m.id, m]))
+  const psMap = Object.fromEntries(paymentSources.map((ps) => [ps.id, ps]))
 
   // 날짜별 그룹
   const grouped = transactions.reduce<Record<string, Transaction[]>>((acc, t) => {
@@ -62,24 +71,45 @@ export default function TransactionsPage() {
   }, {})
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a))
 
+  /** 카테고리 라벨: 중분류 > 소분류 */
+  function getCatLabel(t: Transaction) {
+    const path = getCategoryPath(t.category_id, categories)
+    if (path.length >= 3) return `${path[1].name} > ${path[2].name}`
+    if (path.length === 2) return path[1].name
+    return path[0]?.name ?? '알 수 없음'
+  }
+
+  /** 카테고리 아이콘 (가장 구체적인 레벨) */
+  function getCatDisplay(t: Transaction) {
+    const cat = catMap[t.category_id]
+    const path = getCategoryPath(t.category_id, categories)
+    // 중분류의 아이콘/색상 사용 (더 의미있음)
+    const middleCat = path.length >= 2 ? path[1] : cat
+    return middleCat ?? cat
+  }
+
   return (
     <div className="flex flex-col h-full">
       <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
 
       {/* 월 요약 카드 */}
       {summary && (
-        <div className="mx-4 mt-3 p-4 rounded-2xl bg-teal-400 text-white flex justify-between">
+        <div className="mx-4 mt-3 p-4 rounded-2xl bg-teal-400 text-white grid grid-cols-4 gap-1">
           <div className="text-center">
             <p className="text-xs opacity-80">수입</p>
-            <p className="font-bold">{formatCurrency(summary.income)}</p>
+            <p className="font-bold text-sm">{formatCurrency(summary.income)}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs opacity-80">저축</p>
+            <p className="font-bold text-sm">{formatCurrency(summary.savings)}</p>
           </div>
           <div className="text-center">
             <p className="text-xs opacity-80">지출</p>
-            <p className="font-bold">{formatCurrency(summary.expense)}</p>
+            <p className="font-bold text-sm">{formatCurrency(summary.expense)}</p>
           </div>
           <div className="text-center">
             <p className="text-xs opacity-80">잔액</p>
-            <p className="font-bold">{formatCurrency(summary.income - summary.expense)}</p>
+            <p className="font-bold text-sm">{formatCurrency(summary.income - summary.expense - summary.savings)}</p>
           </div>
         </div>
       )}
@@ -98,8 +128,9 @@ export default function TransactionsPage() {
                 {formatDate(date)}
               </div>
               {grouped[date].map((t) => {
-                const cat = catMap[t.category_id]
+                const displayCat = getCatDisplay(t)
                 const mem = memberMap[t.member_id]
+                const ps = t.payment_source_id ? psMap[t.payment_source_id] : null
                 return (
                   <div
                     key={t.id}
@@ -109,19 +140,25 @@ export default function TransactionsPage() {
                       setShowModal(true)
                     }}
                   >
-                    {cat && <CategoryIcon icon={cat.icon} color={cat.color} size="md" />}
+                    {displayCat && <CategoryIcon icon={displayCat.icon} color={displayCat.color} size="md" />}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{cat?.name ?? '알 수 없음'}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm font-semibold truncate">{getCatLabel(t)}</p>
+                      <p className="text-xs text-gray-500 truncate">
                         {mem?.nickname ?? ''}
                         {t.memo && ` · ${t.memo}`}
+                        {ps && ` · ${ps.name}`}
+                        {t.evaluation && ` · ${EVALUATION_LABELS[t.evaluation]}`}
                         {t.created_at && ` · ${formatTime(t.created_at)}`}
                       </p>
                     </div>
                     <div className="text-right flex items-center gap-2">
                       <p
                         className={`font-bold text-sm ${
-                          t.type === 'income' ? 'text-blue-500' : 'text-gray-900'
+                          t.type === 'income'
+                            ? 'text-blue-500'
+                            : t.type === 'savings'
+                              ? 'text-teal-500'
+                              : 'text-gray-900'
                         }`}
                       >
                         {t.type === 'income' ? '+' : '-'}
