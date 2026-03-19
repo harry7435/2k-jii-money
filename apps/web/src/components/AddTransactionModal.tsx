@@ -8,6 +8,7 @@ import type { Category, Transaction, PaymentSource } from '@2k-jii-money/supabas
 import type { EvaluationType } from '@2k-jii-money/supabase-types'
 import { addTransaction, updateTransaction, getPaymentSources } from '@/src/lib/supabase/queries'
 import { CategoryIcon } from './CategoryIcon'
+import { DateTimePicker } from './DateTimePicker'
 import { MAJOR_CATEGORY_TYPE_MAP, EVALUATION_LABELS } from '@/src/lib/constants/categories'
 import {
   getCategoriesByLevel,
@@ -52,6 +53,7 @@ export function AddTransactionModal({
   const [date, setDate] = useState(
     editingTransaction?.date ?? format(new Date(), 'yyyy-MM-dd')
   )
+  const [time, setTime] = useState(editingTransaction?.time ?? '')
   const [memo, setMemo] = useState(editingTransaction?.memo ?? '')
   const [paymentSourceId, setPaymentSourceId] = useState(
     editingTransaction?.payment_source_id ?? ''
@@ -93,6 +95,7 @@ export function AddTransactionModal({
     setMiddleCatId('')
     setSubCatId('')
     setAmount('')
+    setTime('')
     setMemo('')
     setPaymentSourceId('')
     setEvaluation('')
@@ -113,6 +116,7 @@ export function AddTransactionModal({
         amount: parseInt(amount.replace(/,/g, ''), 10),
         memo: memo || undefined,
         date,
+        time: time || undefined,
         paymentSourceId: paymentSourceId || undefined,
         evaluation: (isExpense && evaluation) ? evaluation as EvaluationType : undefined,
       }),
@@ -132,6 +136,7 @@ export function AddTransactionModal({
         amount: parseInt(amount.replace(/,/g, ''), 10),
         memo: memo || undefined,
         date,
+        time: time || undefined,
         paymentSourceId: paymentSourceId || undefined,
         evaluation: (isExpense && evaluation) ? evaluation as EvaluationType : undefined,
       }),
@@ -267,14 +272,14 @@ export function AddTransactionModal({
           </div>
         </div>
 
-        {/* 날짜 */}
+        {/* 날짜 & 시간 */}
         <div>
-          <label className="text-xs text-gray-600 mb-1 block">날짜</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2 outline-none"
+          <label className="text-xs text-gray-600 mb-1 block">날짜 / 시간</label>
+          <DateTimePicker
+            date={date}
+            time={time}
+            onDateChange={setDate}
+            onTimeChange={setTime}
           />
         </div>
 

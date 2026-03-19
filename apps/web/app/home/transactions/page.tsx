@@ -148,7 +148,7 @@ export default function TransactionsPage() {
                         {t.memo && ` · ${t.memo}`}
                         {ps && ` · ${ps.name}`}
                         {t.evaluation && ` · ${EVALUATION_LABELS[t.evaluation]}`}
-                        {t.created_at && ` · ${formatTime(t.created_at)}`}
+                        {t.time ? ` · ${t.time}` : (t.created_at && ` · ${formatTime(t.created_at)}`)}
                       </p>
                     </div>
                     <div className="text-right flex items-center gap-2">
