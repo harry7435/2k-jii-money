@@ -1,8 +1,9 @@
 import { createClient } from './client'
 import { v4 as uuidv4 } from 'uuid'
 import { monthDateRange } from '../utils/formatters'
-import { DEFAULT_CATEGORIES } from '../constants/categories'
-import type { Category, Transaction, Budget, Family, Member } from '@2k-jii-money/supabase-types'
+import { DEFAULT_CATEGORY_TREE, DEFAULT_PAYMENT_SOURCES } from '../constants/categories'
+import type { CategoryNode } from '../constants/categories'
+import type { Category, Transaction, Budget, Family, Member, PaymentSource } from '@2k-jii-money/supabase-types'
 
 const FAMILY_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
@@ -37,6 +38,7 @@ export async function createFamily(nickname: string): Promise<{ family: Family; 
   if (mErr) throw mErr
 
   await createDefaultCategories(familyId)
+  await createDefaultPaymentSources(familyId)
 
   return { family: family as Family, member: member as Member }
 }
@@ -80,17 +82,46 @@ export async function getMembers(familyId: string): Promise<Member[]> {
 
 export async function createDefaultCategories(familyId: string): Promise<void> {
   const supabase = createClient()
-  const rows = DEFAULT_CATEGORIES.map((c) => ({
-    id: uuidv4(),
-    family_id: familyId,
-    name: c.name,
-    icon: c.icon,
-    color: c.color,
-    is_default: c.isDefault,
-  }))
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('categories').insert(rows)
-  if (error) throw error
+
+  // 재귀적으로 트리를 평탄화하여 레벨별로 삽입
+  async function insertLevel(
+    nodes: CategoryNode[],
+    level: number,
+    parentId: string | null
+  ): Promise<void> {
+    const rows = nodes.map((c) => ({
+      id: uuidv4(),
+      family_id: familyId,
+      name: c.name,
+      icon: c.icon,
+      color: c.color,
+      is_default: c.isDefault,
+      level,
+      parent_id: parentId,
+      is_fixed: c.isFixed ?? false,
+    }))
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
+      .from('categories')
+      .insert(rows)
+      .select('id, name')
+    if (error) throw error
+
+    const inserted = data as { id: string; name: string }[]
+
+    // 자식 카테고리 삽입
+    for (let i = 0; i < nodes.length; i++) {
+      if (nodes[i].children?.length) {
+        const parentRow = inserted.find((r) => r.name === nodes[i].name)
+        if (parentRow) {
+          await insertLevel(nodes[i].children!, level + 1, parentRow.id)
+        }
+      }
+    }
+  }
+
+  await insertLevel(DEFAULT_CATEGORY_TREE, 1, null)
 }
 
 export async function getCategories(familyId: string): Promise<Category[]> {
@@ -100,7 +131,7 @@ export async function getCategories(familyId: string): Promise<Category[]> {
     .from('categories')
     .select()
     .eq('family_id', familyId)
-    .order('is_default', { ascending: false })
+    .order('level')
     .order('name')
   if (error) throw error
   return (data ?? []) as Category[]
@@ -110,23 +141,94 @@ export async function addCategory(
   familyId: string,
   name: string,
   icon: string,
-  color: string
+  color: string,
+  parentId?: string,
+  level?: number
 ): Promise<Category> {
   const supabase = createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('categories')
-    .insert({ id: uuidv4(), family_id: familyId, name, icon, color, is_default: false })
+    .insert({
+      id: uuidv4(),
+      family_id: familyId,
+      name,
+      icon,
+      color,
+      is_default: false,
+      parent_id: parentId ?? null,
+      level: level ?? 3,
+    })
     .select()
     .single()
   if (error) throw error
   return data as Category
 }
 
+export async function updateCategory(
+  id: string,
+  params: { name?: string; icon?: string; color?: string; is_fixed?: boolean }
+): Promise<void> {
+  const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('categories')
+    .update(params)
+    .eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteCategory(id: string): Promise<void> {
   const supabase = createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any).from('categories').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ─── Payment Sources ──────────────────────────────────────────────────────
+
+export async function createDefaultPaymentSources(familyId: string): Promise<void> {
+  const supabase = createClient()
+  const rows = DEFAULT_PAYMENT_SOURCES.map((ps, i) => ({
+    id: uuidv4(),
+    family_id: familyId,
+    name: ps.name,
+    is_default: ps.isDefault,
+    sort_order: i,
+  }))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('payment_sources').insert(rows)
+  if (error) throw error
+}
+
+export async function getPaymentSources(familyId: string): Promise<PaymentSource[]> {
+  const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('payment_sources')
+    .select()
+    .eq('family_id', familyId)
+    .order('sort_order')
+  if (error) throw error
+  return (data ?? []) as PaymentSource[]
+}
+
+export async function addPaymentSource(familyId: string, name: string): Promise<PaymentSource> {
+  const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('payment_sources')
+    .insert({ id: uuidv4(), family_id: familyId, name, is_default: false })
+    .select()
+    .single()
+  if (error) throw error
+  return data as PaymentSource
+}
+
+export async function deletePaymentSource(id: string): Promise<void> {
+  const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('payment_sources').delete().eq('id', id)
   if (error) throw error
 }
 
@@ -152,10 +254,12 @@ export async function addTransaction(params: {
   familyId: string
   memberId: string
   categoryId: string
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'savings'
   amount: number
   memo?: string
   date: string
+  paymentSourceId?: string
+  evaluation?: 'consumption' | 'waste' | 'investment'
 }): Promise<Transaction> {
   const supabase = createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -170,6 +274,8 @@ export async function addTransaction(params: {
       amount: params.amount,
       memo: params.memo || null,
       date: params.date,
+      payment_source_id: params.paymentSourceId || null,
+      evaluation: params.evaluation || null,
     })
     .select()
     .single()
@@ -181,10 +287,12 @@ export async function updateTransaction(
   id: string,
   params: {
     categoryId: string
-    type: 'income' | 'expense'
+    type: 'income' | 'expense' | 'savings'
     amount: number
     memo?: string
     date: string
+    paymentSourceId?: string
+    evaluation?: 'consumption' | 'waste' | 'investment'
   }
 ): Promise<Transaction> {
   const supabase = createClient()
@@ -197,6 +305,8 @@ export async function updateTransaction(
       amount: params.amount,
       memo: params.memo || null,
       date: params.date,
+      payment_source_id: params.paymentSourceId || null,
+      evaluation: params.evaluation || null,
     })
     .eq('id', id)
     .select()
@@ -215,15 +325,16 @@ export async function deleteTransaction(id: string): Promise<void> {
 export async function getMonthlySummary(
   familyId: string,
   yearMonth: string
-): Promise<{ income: number; expense: number }> {
+): Promise<{ income: number; expense: number; savings: number }> {
   const transactions = await getTransactions(familyId, yearMonth)
   return transactions.reduce(
     (acc, t) => {
       if (t.type === 'income') acc.income += t.amount
+      else if (t.type === 'savings') acc.savings += t.amount
       else acc.expense += t.amount
       return acc
     },
-    { income: 0, expense: 0 }
+    { income: 0, expense: 0, savings: 0 }
   )
 }
 
