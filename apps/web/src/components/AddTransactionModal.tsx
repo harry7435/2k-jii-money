@@ -1,12 +1,19 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useCallback, useRef, useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { X } from 'lucide-react'
-import type { Category, Transaction } from '@2k-jii-money/supabase-types'
-import { addTransaction, updateTransaction } from '@/src/lib/supabase/queries'
+import type { Category, Transaction, PaymentSource } from '@2k-jii-money/supabase-types'
+import type { EvaluationType } from '@2k-jii-money/supabase-types'
+import { addTransaction, updateTransaction, getPaymentSources } from '@/src/lib/supabase/queries'
 import { CategoryIcon } from './CategoryIcon'
+import { MAJOR_CATEGORY_TYPE_MAP, EVALUATION_LABELS } from '@/src/lib/constants/categories'
+import {
+  getCategoriesByLevel,
+  getChildCategories,
+  getCategoryPath,
+} from '@/src/lib/utils/categoryUtils'
 
 interface AddTransactionModalProps {
   familyId: string
@@ -28,27 +35,67 @@ export function AddTransactionModal({
   const qc = useQueryClient()
   const isEdit = !!editingTransaction
 
-  const [type, setType] = useState<'expense' | 'income'>(
-    editingTransaction?.type ?? 'expense'
-  )
+  // 수정 모드 시 카테고리 경로 복원
+  const editPath = useMemo(() => {
+    if (!editingTransaction) return null
+    return getCategoryPath(editingTransaction.category_id, categories)
+  }, [editingTransaction, categories])
+
+  const majorCategories = useMemo(() => getCategoriesByLevel(categories, 1), [categories])
+
+  const [majorCatId, setMajorCatId] = useState(editPath?.[0]?.id ?? '')
+  const [middleCatId, setMiddleCatId] = useState(editPath?.[1]?.id ?? '')
+  const [subCatId, setSubCatId] = useState(editPath?.[2]?.id ?? '')
   const [amount, setAmount] = useState(
     editingTransaction ? editingTransaction.amount.toLocaleString('ko-KR') : ''
   )
   const [date, setDate] = useState(
     editingTransaction?.date ?? format(new Date(), 'yyyy-MM-dd')
   )
-  const [categoryId, setCategoryId] = useState(
-    editingTransaction?.category_id ?? ''
-  )
   const [memo, setMemo] = useState(editingTransaction?.memo ?? '')
+  const [paymentSourceId, setPaymentSourceId] = useState(
+    editingTransaction?.payment_source_id ?? ''
+  )
+  const [evaluation, setEvaluation] = useState<EvaluationType | ''>(
+    editingTransaction?.evaluation ?? ''
+  )
 
   const [savedCount, setSavedCount] = useState(0)
   const amountRef = useRef<HTMLInputElement>(null)
 
+  // 거래출처 조회
+  const { data: paymentSources = [] } = useQuery({
+    queryKey: ['paymentSources', familyId],
+    queryFn: () => getPaymentSources(familyId),
+    enabled: !!familyId,
+  })
+
+  // 파생 데이터
+  const middleCategories = useMemo(
+    () => (majorCatId ? getChildCategories(categories, majorCatId) : []),
+    [categories, majorCatId]
+  )
+  const subCategories = useMemo(
+    () => (middleCatId ? getChildCategories(categories, middleCatId) : []),
+    [categories, middleCatId]
+  )
+
+  const selectedMajor = majorCategories.find((c) => c.id === majorCatId)
+  const transactionType = selectedMajor
+    ? MAJOR_CATEGORY_TYPE_MAP[selectedMajor.name] ?? 'expense'
+    : 'expense'
+  const isExpense = transactionType === 'expense'
+
+  // 가장 구체적인 카테고리 ID
+  const effectiveCategoryId = subCatId || middleCatId
+
   const resetForm = useCallback(() => {
+    setMiddleCatId('')
+    setSubCatId('')
     setAmount('')
-    setCategoryId('')
     setMemo('')
+    setPaymentSourceId('')
+    setEvaluation('')
   }, [])
 
   const invalidateQueries = useCallback(() => {
@@ -61,11 +108,13 @@ export function AddTransactionModal({
       addTransaction({
         familyId,
         memberId,
-        categoryId,
-        type,
+        categoryId: effectiveCategoryId,
+        type: transactionType,
         amount: parseInt(amount.replace(/,/g, ''), 10),
         memo: memo || undefined,
         date,
+        paymentSourceId: paymentSourceId || undefined,
+        evaluation: (isExpense && evaluation) ? evaluation as EvaluationType : undefined,
       }),
     onSuccess: () => {
       invalidateQueries()
@@ -78,11 +127,13 @@ export function AddTransactionModal({
   const editMutation = useMutation({
     mutationFn: () =>
       updateTransaction(editingTransaction!.id, {
-        categoryId,
-        type,
+        categoryId: effectiveCategoryId,
+        type: transactionType,
         amount: parseInt(amount.replace(/,/g, ''), 10),
         memo: memo || undefined,
         date,
+        paymentSourceId: paymentSourceId || undefined,
+        evaluation: (isExpense && evaluation) ? evaluation as EvaluationType : undefined,
       }),
     onSuccess: () => {
       invalidateQueries()
@@ -92,18 +143,12 @@ export function AddTransactionModal({
 
   const mutation = isEdit ? editMutation : addMutation
 
-  const filteredCategories = categories.filter((c) =>
-    type === 'income'
-      ? ['급여', '기타수입'].includes(c.name) || !c.is_default
-      : !['급여', '기타수입'].includes(c.name)
-  )
-
   const handleAmountChange = (v: string) => {
     const digits = v.replace(/[^0-9]/g, '')
     setAmount(digits ? parseInt(digits, 10).toLocaleString('ko-KR') : '')
   }
 
-  const canSubmit = amount && categoryId && !mutation.isPending
+  const canSubmit = amount && effectiveCategoryId && !mutation.isPending
 
   const handleSubmit = useCallback(() => {
     if (canSubmit) mutation.mutate()
@@ -125,7 +170,7 @@ export function AddTransactionModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white rounded-t-2xl p-5 space-y-4"
+        className="w-full max-w-md bg-white rounded-t-2xl p-5 space-y-3 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
@@ -137,25 +182,75 @@ export function AddTransactionModal({
           </button>
         </div>
 
-        {/* Type toggle */}
+        {/* 대분류 선택 (수입/저축/지출) */}
         <div className="flex rounded-xl overflow-hidden border border-gray-200">
-          {(['expense', 'income'] as const).map((t) => (
+          {majorCategories.map((mc) => (
             <button
-              key={t}
+              key={mc.id}
               onClick={() => {
-                setType(t)
-                setCategoryId('')
+                setMajorCatId(mc.id)
+                setMiddleCatId('')
+                setSubCatId('')
+                setEvaluation('')
               }}
               className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-                type === t ? 'bg-teal-400 text-white' : 'bg-white text-gray-600'
+                majorCatId === mc.id ? 'bg-teal-400 text-white' : 'bg-white text-gray-600'
               }`}
             >
-              {t === 'expense' ? '지출' : '수입'}
+              {mc.name}
             </button>
           ))}
         </div>
 
-        {/* Amount */}
+        {/* 중분류 선택 */}
+        {middleCategories.length > 0 && (
+          <div>
+            <label className="text-xs text-gray-600 mb-1.5 block">중분류</label>
+            <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
+              {middleCategories.map((mc) => (
+                <button
+                  key={mc.id}
+                  onClick={() => {
+                    setMiddleCatId(mc.id)
+                    setSubCatId('')
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors ${
+                    middleCatId === mc.id
+                      ? 'border-teal-400 bg-teal-50 text-teal-700'
+                      : 'border-gray-200 text-gray-600'
+                  }`}
+                >
+                  <CategoryIcon icon={mc.icon} color={mc.color} size="sm" />
+                  {mc.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 소분류 선택 */}
+        {subCategories.length > 0 && (
+          <div>
+            <label className="text-xs text-gray-600 mb-1.5 block">소분류</label>
+            <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
+              {subCategories.map((sc) => (
+                <button
+                  key={sc.id}
+                  onClick={() => setSubCatId(sc.id)}
+                  className={`px-3 py-1.5 rounded-full border text-sm transition-colors ${
+                    subCatId === sc.id
+                      ? 'border-teal-400 bg-teal-50 text-teal-700'
+                      : 'border-gray-200 text-gray-600'
+                  }`}
+                >
+                  {sc.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 금액 */}
         <div>
           <label className="text-xs text-gray-600 mb-1 block">금액</label>
           <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2">
@@ -172,7 +267,7 @@ export function AddTransactionModal({
           </div>
         </div>
 
-        {/* Date */}
+        {/* 날짜 */}
         <div>
           <label className="text-xs text-gray-600 mb-1 block">날짜</label>
           <input
@@ -183,28 +278,57 @@ export function AddTransactionModal({
           />
         </div>
 
-        {/* Category */}
-        <div>
-          <label className="text-xs text-gray-600 mb-2 block">카테고리</label>
-          <div className="flex flex-wrap gap-2 max-h-37.5 overflow-y-auto">
-            {filteredCategories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setCategoryId(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors ${
-                  categoryId === cat.id
-                    ? 'border-teal-400 bg-teal-50 text-teal-700'
-                    : 'border-gray-200 text-gray-600'
-                }`}
-              >
-                <CategoryIcon icon={cat.icon} color={cat.color} size="sm" />
-                {cat.name}
-              </button>
-            ))}
+        {/* 거래출처 */}
+        {paymentSources.length > 0 && (
+          <div>
+            <label className="text-xs text-gray-600 mb-1.5 block">거래출처</label>
+            <div className="flex flex-wrap gap-2">
+              {paymentSources.map((ps: PaymentSource) => (
+                <button
+                  key={ps.id}
+                  onClick={() => setPaymentSourceId(paymentSourceId === ps.id ? '' : ps.id)}
+                  className={`px-3 py-1.5 rounded-full border text-sm transition-colors ${
+                    paymentSourceId === ps.id
+                      ? 'border-teal-400 bg-teal-50 text-teal-700'
+                      : 'border-gray-200 text-gray-600'
+                  }`}
+                >
+                  {ps.name}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Memo */}
+        {/* 지출평가 (지출 타입만) */}
+        {isExpense && (
+          <div>
+            <label className="text-xs text-gray-600 mb-1.5 block">지출평가</label>
+            <div className="flex gap-2">
+              {(Object.entries(EVALUATION_LABELS) as [EvaluationType, string][]).map(
+                ([value, label]) => (
+                  <button
+                    key={value}
+                    onClick={() => setEvaluation(evaluation === value ? '' : value)}
+                    className={`flex-1 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                      evaluation === value
+                        ? value === 'consumption'
+                          ? 'border-blue-400 bg-blue-50 text-blue-700'
+                          : value === 'waste'
+                            ? 'border-red-400 bg-red-50 text-red-700'
+                            : 'border-green-400 bg-green-50 text-green-700'
+                        : 'border-gray-200 text-gray-600'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 메모 */}
         <div>
           <label className="text-xs text-gray-600 mb-1 block">메모 (선택)</label>
           <input
@@ -216,7 +340,7 @@ export function AddTransactionModal({
           />
         </div>
 
-        {/* Submit */}
+        {/* 저장 */}
         <div className="flex items-center gap-3">
           <button
             onClick={handleSubmit}
