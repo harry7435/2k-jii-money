@@ -9,7 +9,12 @@ import {
 import { useFamilyStore } from '@/src/lib/store/familyStore'
 import { getTransactions, getCategories, getMonthlySummary } from '@/src/lib/supabase/queries'
 import { getCurrentYearMonth, formatCurrency, formatYearMonth } from '@/src/lib/utils/formatters'
+import { findMiddleCategory } from '@/src/lib/utils/categoryUtils'
 import { MonthSelector } from '@/src/components/MonthSelector'
+import { SummarySection } from '@/src/components/dashboard/SummarySection'
+import { ExpenseByMiddleCategory } from '@/src/components/dashboard/ExpenseByMiddleCategory'
+import { FixedVsVariableExpense } from '@/src/components/dashboard/FixedVsVariableExpense'
+import { EvaluationReport } from '@/src/components/dashboard/EvaluationReport'
 
 export default function DashboardPage() {
   const { family } = useFamilyStore()
@@ -34,23 +39,18 @@ export default function DashboardPage() {
     enabled: !!familyId,
   })
 
-  const catMap = Object.fromEntries(categories.map((c) => [c.id, c]))
-
-  // 카테고리별 지출 (파이 차트)
-  const expensesByCat = transactions
+  // 중분류별 지출 (파이 차트)
+  const expensesByMiddle = transactions
     .filter((t) => t.type === 'expense')
-    .reduce<Record<string, number>>((acc, t) => {
-      acc[t.category_id] = (acc[t.category_id] ?? 0) + t.amount
+    .reduce<Record<string, { name: string; value: number; color: string }>>((acc, t) => {
+      const middle = findMiddleCategory(t.category_id, categories)
+      if (!middle) return acc
+      acc[middle.id] = acc[middle.id] ?? { name: middle.name, value: 0, color: middle.color }
+      acc[middle.id].value += t.amount
       return acc
     }, {})
 
-  const pieData = Object.entries(expensesByCat)
-    .map(([catId, amount]) => ({
-      name: catMap[catId]?.name ?? '기타',
-      value: amount,
-      color: catMap[catId]?.color ?? '#AEB6BF',
-    }))
-    .sort((a, b) => b.value - a.value)
+  const pieData = Object.values(expensesByMiddle).sort((a, b) => b.value - a.value)
 
   // 일별 지출 (바 차트)
   const dailyExpense = transactions
@@ -73,17 +73,40 @@ export default function DashboardPage() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* 요약 카드 */}
         {summary && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-blue-50 rounded-2xl p-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-blue-50 rounded-2xl p-3">
               <p className="text-xs text-blue-400 font-semibold">수입</p>
-              <p className="text-lg font-bold text-blue-600 mt-1">{formatCurrency(summary.income)}</p>
+              <p className="text-base font-bold text-blue-600 mt-1">{formatCurrency(summary.income)}</p>
             </div>
-            <div className="bg-red-50 rounded-2xl p-4">
+            <div className="bg-teal-50 rounded-2xl p-3">
+              <p className="text-xs text-teal-400 font-semibold">저축</p>
+              <p className="text-base font-bold text-teal-600 mt-1">{formatCurrency(summary.savings)}</p>
+            </div>
+            <div className="bg-red-50 rounded-2xl p-3">
               <p className="text-xs text-red-400 font-semibold">지출</p>
-              <p className="text-lg font-bold text-red-500 mt-1">{formatCurrency(summary.expense)}</p>
+              <p className="text-base font-bold text-red-500 mt-1">{formatCurrency(summary.expense)}</p>
             </div>
           </div>
         )}
+
+        {/* 수입 현황 */}
+        <SummarySection
+          transactions={transactions}
+          categories={categories}
+          type="income"
+          title="수입 현황"
+        />
+
+        {/* 저축 현황 */}
+        <SummarySection
+          transactions={transactions}
+          categories={categories}
+          type="savings"
+          title="저축 현황"
+        />
+
+        {/* 지출 현황 (중분류별) */}
+        <ExpenseByMiddleCategory transactions={transactions} categories={categories} />
 
         {/* 파이 차트 */}
         {pieData.length > 0 ? (
@@ -109,7 +132,6 @@ export default function DashboardPage() {
                 <Tooltip formatter={(v) => [formatCurrency(v as number)]} />
               </PieChart>
             </ResponsiveContainer>
-            {/* 범례 */}
             <div className="mt-2 space-y-1">
               {pieData.map((d) => (
                 <div key={d.name} className="flex items-center justify-between text-xs">
@@ -128,6 +150,12 @@ export default function DashboardPage() {
             지출 데이터가 없습니다
           </div>
         )}
+
+        {/* 고정지출 vs 변동지출 */}
+        <FixedVsVariableExpense transactions={transactions} categories={categories} />
+
+        {/* 변동지출 평가 */}
+        <EvaluationReport transactions={transactions} categories={categories} />
 
         {/* 일별 바 차트 */}
         {barData.length > 0 && (

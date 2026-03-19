@@ -9,6 +9,7 @@ import { getCurrentYearMonth, formatCurrency } from '@/src/lib/utils/formatters'
 import { MonthSelector } from '@/src/components/MonthSelector'
 import { SetBudgetModal } from '@/src/components/SetBudgetModal'
 import { CategoryIcon } from '@/src/components/CategoryIcon'
+import { findMiddleCategory } from '@/src/lib/utils/categoryUtils'
 
 export default function BudgetPage() {
   const { family } = useFamilyStore()
@@ -37,11 +38,14 @@ export default function BudgetPage() {
   // 총 예산 (category_id = null)
   const totalBudgetRow = budgets.find((b) => b.category_id === null)
 
-  // 카테고리별 지출 합계
+  // 중분류별 지출 합계
   const spentByCat = transactions
     .filter((t) => t.type === 'expense')
     .reduce<Record<string, number>>((acc, t) => {
-      acc[t.category_id] = (acc[t.category_id] ?? 0) + t.amount
+      const middle = findMiddleCategory(t.category_id, categories)
+      if (middle) {
+        acc[middle.id] = (acc[middle.id] ?? 0) + t.amount
+      }
       return acc
     }, {})
 
