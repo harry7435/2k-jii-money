@@ -147,6 +147,7 @@ export type Database = {
           amount: number
           memo: string | null
           date: string
+          time: string | null
           payment_source_id: string | null
           evaluation: 'consumption' | 'waste' | 'investment' | null
           created_at: string
@@ -160,6 +161,7 @@ export type Database = {
           amount: number
           memo?: string | null
           date: string
+          time?: string | null
           payment_source_id?: string | null
           evaluation?: 'consumption' | 'waste' | 'investment' | null
           created_at?: string | null
@@ -173,6 +175,7 @@ export type Database = {
           amount?: number
           memo?: string | null
           date?: string
+          time?: string | null
           payment_source_id?: string | null
           evaluation?: 'consumption' | 'waste' | 'investment' | null
           created_at?: string | null

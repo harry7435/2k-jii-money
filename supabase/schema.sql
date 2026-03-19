@@ -48,6 +48,7 @@ CREATE TABLE transactions (
   amount INTEGER NOT NULL CHECK (amount > 0),
   memo TEXT,
   date DATE NOT NULL,
+  time VARCHAR(5),
   payment_source_id UUID REFERENCES payment_sources(id),
   evaluation VARCHAR CHECK (evaluation IN ('consumption', 'waste', 'investment')),
   created_at TIMESTAMPTZ DEFAULT NOW()

@@ -324,6 +324,7 @@ export async function addTransaction(params: {
   amount: number
   memo?: string
   date: string
+  time?: string
   paymentSourceId?: string
   evaluation?: 'consumption' | 'waste' | 'investment'
 }): Promise<Transaction> {
@@ -340,6 +341,7 @@ export async function addTransaction(params: {
       amount: params.amount,
       memo: params.memo || null,
       date: params.date,
+      time: params.time || null,
       payment_source_id: params.paymentSourceId || null,
       evaluation: params.evaluation || null,
     })
@@ -357,6 +359,7 @@ export async function updateTransaction(
     amount: number
     memo?: string
     date: string
+    time?: string
     paymentSourceId?: string
     evaluation?: 'consumption' | 'waste' | 'investment'
   }
@@ -371,6 +374,7 @@ export async function updateTransaction(
       amount: params.amount,
       memo: params.memo || null,
       date: params.date,
+      time: params.time || null,
       payment_source_id: params.paymentSourceId || null,
       evaluation: params.evaluation || null,
     })
