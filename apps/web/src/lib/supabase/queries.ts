@@ -165,6 +165,61 @@ export async function addCategory(
   return data as Category
 }
 
+/** 기존 가족에 누락된 기본 소분류를 추가 (중분류 이름으로 매칭) */
+export async function insertMissingSubCategories(
+  familyId: string,
+  existingCategories: Category[]
+): Promise<number> {
+  const supabase = createClient()
+
+  // 중분류 맵: name → Category
+  const middleByName = new Map(
+    existingCategories.filter((c) => c.level === 2).map((c) => [c.name, c])
+  )
+
+  // 이미 있는 소분류: parent_id → name set
+  const existingSubNames = new Map<string, Set<string>>()
+  for (const cat of existingCategories.filter((c) => c.level === 3)) {
+    if (!existingSubNames.has(cat.parent_id!)) {
+      existingSubNames.set(cat.parent_id!, new Set())
+    }
+    existingSubNames.get(cat.parent_id!)!.add(cat.name)
+  }
+
+  // DEFAULT_CATEGORY_TREE를 순회하여 없는 소분류만 수집
+  const toInsert: object[] = []
+  for (const major of DEFAULT_CATEGORY_TREE) {
+    for (const middle of major.children ?? []) {
+      const existingMiddle = middleByName.get(middle.name)
+      if (!existingMiddle) continue
+
+      const existingSubs = existingSubNames.get(existingMiddle.id) ?? new Set()
+      for (const sub of middle.children ?? []) {
+        if (!existingSubs.has(sub.name)) {
+          toInsert.push({
+            id: uuidv4(),
+            family_id: familyId,
+            name: sub.name,
+            icon: sub.icon,
+            color: sub.color,
+            is_default: true,
+            level: 3,
+            parent_id: existingMiddle.id,
+            is_fixed: false,
+          })
+        }
+      }
+    }
+  }
+
+  if (toInsert.length === 0) return 0
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('categories').insert(toInsert)
+  if (error) throw error
+  return toInsert.length
+}
+
 export async function updateCategory(
   id: string,
   params: { name?: string; icon?: string; color?: string; is_fixed?: boolean }

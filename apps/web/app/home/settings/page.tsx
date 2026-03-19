@@ -14,10 +14,11 @@ import {
   getPaymentSources,
   addPaymentSource,
   deletePaymentSource,
+  insertMissingSubCategories,
 } from '@/src/lib/supabase/queries'
 import { CategoryIcon } from '@/src/components/CategoryIcon'
 import { getCategoriesByLevel, getChildCategories } from '@/src/lib/utils/categoryUtils'
-import type { Category, PaymentSource } from '@2k-jii-money/supabase-types'
+import type { PaymentSource } from '@2k-jii-money/supabase-types'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -89,6 +90,16 @@ export default function SettingsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['paymentSources', familyId] }),
   })
 
+  const [subInitResult, setSubInitResult] = useState<string | null>(null)
+  const insertSubsMutation = useMutation({
+    mutationFn: () => insertMissingSubCategories(familyId, categories),
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ['categories', familyId] })
+      setSubInitResult(count > 0 ? `${count}개 소분류가 추가되었습니다.` : '이미 모두 추가되어 있습니다.')
+      setTimeout(() => setSubInitResult(null), 3000)
+    },
+  })
+
   const majorCategories = useMemo(() => getCategoriesByLevel(categories, 1), [categories])
 
   function handleCopy() {
@@ -147,7 +158,17 @@ export default function SettingsPage() {
 
       {/* ─── 카테고리 관리 ─────────────────────────────── */}
       <div className="bg-white mt-2 px-5 py-4 border-b border-gray-100">
-        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">카테고리 관리</p>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-semibold text-gray-500 uppercase">카테고리 관리</p>
+          <button
+            onClick={() => insertSubsMutation.mutate()}
+            disabled={insertSubsMutation.isPending}
+            className="text-xs text-teal-500 hover:text-teal-600 disabled:opacity-40"
+          >
+            {insertSubsMutation.isPending ? '추가 중...' : '기본 소분류 추가'}
+          </button>
+        </div>
+        {subInitResult && <p className="text-xs text-teal-500 mb-2">{subInitResult}</p>}
         <p className="text-xs text-gray-400 mb-3">소분류는 추가/삭제할 수 있어요. 대·중분류는 기본 제공됩니다.</p>
 
         <div className="space-y-1">
