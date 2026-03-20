@@ -34,10 +34,12 @@ apps/web/
 ├── src/
 │   ├── components/             # 공통 컴포넌트
 │   │   ├── AddTransactionModal.tsx
+│   │   ├── DateTimePicker.tsx
 │   │   ├── SetBudgetModal.tsx
 │   │   ├── BudgetProgressBar.tsx
 │   │   ├── CategoryIcon.tsx
-│   │   └── MonthSelector.tsx
+│   │   ├── MonthSelector.tsx
+│   │   └── dashboard/          # 대시보드 서브 컴포넌트
 │   └── lib/
 │       ├── providers.tsx       # QueryClientProvider 래퍼
 │       ├── store/
@@ -47,9 +49,10 @@ apps/web/
 │       │   ├── server.ts       # 서버용 Supabase 클라이언트
 │       │   └── queries.ts      # 모든 DB 쿼리 함수
 │       ├── utils/
-│       │   └── formatters.ts
+│       │   ├── formatters.ts
+│       │   └── categoryUtils.ts  # getCategoriesByLevel, getChildCategories, getCategoryPath
 │       └── constants/
-│           └── categories.ts   # 기본 카테고리 정의
+│           └── categories.ts   # DEFAULT_CATEGORY_TREE, DEFAULT_PAYMENT_SOURCES, MAJOR_CATEGORY_TYPE_MAP
 └── package.json
 ```
 
@@ -58,7 +61,9 @@ apps/web/
 상세 규칙은 `.claude/rules/` 참조:
 - `supabase.md` — Supabase 클라이언트 사용, 데이터 페칭 패턴
 - `zustand-hydration.md` — Zustand 전역 상태, persist hydration 및 `useHasHydrated()` 훅
-- `style.md` — Tailwind v4, 아이콘, 모달 패턴
+- `style.md` — Tailwind v4, 아이콘, 모달·바텀시트·DateTimePicker 패턴
+- `categories.md` — 3단계 카테고리 구조, 유틸 함수, 거래 타입 매핑
+- `schema.md` — DB 스키마 특이사항 (time, evaluation, payment_sources 등)
 
 ## 개발 명령어
 
