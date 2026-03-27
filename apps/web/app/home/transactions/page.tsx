@@ -211,7 +211,9 @@ export default function TransactionsPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteMutation.mutate(t.id);
+                          if (confirm("이 내역을 삭제하시겠습니까?")) {
+                            deleteMutation.mutate(t.id);
+                          }
                         }}
                         className="text-gray-400 hover:text-red-400"
                       >
