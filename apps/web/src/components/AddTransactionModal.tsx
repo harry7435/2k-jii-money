@@ -200,11 +200,11 @@ export function AddTransactionModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white rounded-t-2xl flex flex-col max-h-[90vh]"
+        className="w-full max-w-md bg-white rounded-t-2xl flex flex-col max-h-[90vh] md:rounded-2xl md:max-w-lg md:max-h-[85vh] md:shadow-2xl md:overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
@@ -400,7 +400,7 @@ export function AddTransactionModal({
         </div>
 
         {/* 저장 버튼 — 스크롤 영역 밖, 항상 하단 고정 */}
-        <div className="px-5 pb-5 pt-3 border-t border-gray-100 bg-white">
+        <div className="px-5 pb-5 pt-3 border-t border-gray-100 bg-white md:rounded-b-2xl">
           {mutation.isError && (
             <p className="text-red-500 text-sm text-center mb-2">
               {isEdit ? "수정에" : "저장에"} 실패했습니다.

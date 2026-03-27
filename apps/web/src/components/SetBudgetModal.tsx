@@ -47,8 +47,8 @@ export function SetBudgetModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
-      <div className="w-full max-w-md bg-white rounded-t-2xl p-5 space-y-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center">
+      <div className="w-full max-w-md bg-white rounded-t-2xl p-5 space-y-4 md:rounded-2xl md:shadow-2xl">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">
             {category ? "카테고리 예산 설정" : "이번 달 총 예산 설정"}
@@ -60,7 +60,11 @@ export function SetBudgetModal({
 
         {category && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-teal-400 bg-teal-50 text-teal-700 text-sm w-fit">
-            <CategoryIcon icon={category.icon} color={category.color} size="sm" />
+            <CategoryIcon
+              icon={category.icon}
+              color={category.color}
+              size="sm"
+            />
             {category.name}
           </div>
         )}
