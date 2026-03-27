@@ -213,315 +213,324 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* ─── 카테고리 관리 ─────────────────────────────── */}
-      <div className="bg-white mt-2 px-5 py-4 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-semibold text-gray-500 uppercase">
-            카테고리 관리
+      {/* ─── 카테고리 관리 + 거래출처 관리 ─────────────────── */}
+      <div className="md:grid md:grid-cols-2 md:gap-4">
+        <div className="bg-white mt-2 px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase">
+              카테고리 관리
+            </p>
+            <button
+              onClick={() => insertSubsMutation.mutate()}
+              disabled={insertSubsMutation.isPending}
+              className="text-xs text-teal-500 hover:text-teal-600 disabled:opacity-40"
+            >
+              {insertSubsMutation.isPending ? "추가 중..." : "기본 소분류 추가"}
+            </button>
+          </div>
+          {subInitResult && (
+            <p className="text-xs text-teal-500 mb-2">{subInitResult}</p>
+          )}
+          <p className="text-xs text-gray-400 mb-3">
+            <span className="text-orange-400">구항목</span> 표시된 중분류는 삭제
+            가능합니다.
+            <br />
+            소분류는 추가/삭제할 수 있어요.
           </p>
-          <button
-            onClick={() => insertSubsMutation.mutate()}
-            disabled={insertSubsMutation.isPending}
-            className="text-xs text-teal-500 hover:text-teal-600 disabled:opacity-40"
-          >
-            {insertSubsMutation.isPending ? "추가 중..." : "기본 소분류 추가"}
-          </button>
-        </div>
-        {subInitResult && (
-          <p className="text-xs text-teal-500 mb-2">{subInitResult}</p>
-        )}
-        <p className="text-xs text-gray-400 mb-3">
-          <span className="text-orange-400">구항목</span> 표시된 중분류는 삭제
-          가능합니다.
-          <br />
-          소분류는 추가/삭제할 수 있어요.
-        </p>
 
-        <div className="space-y-1">
-          {majorCategories.map((major) => {
-            const middleList = getChildCategories(categories, major.id);
-            const isOpenMajor = expandedMajor === major.id;
+          <div className="space-y-1">
+            {majorCategories.map((major) => {
+              const middleList = getChildCategories(categories, major.id);
+              const isOpenMajor = expandedMajor === major.id;
 
-            return (
-              <div
-                key={major.id}
-                className="border border-gray-100 rounded-xl overflow-hidden"
-              >
-                {/* 대분류 행 */}
-                <button
-                  onClick={() =>
-                    setExpandedMajor(isOpenMajor ? null : major.id)
-                  }
-                  className="w-full flex items-center gap-2 px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors"
+              return (
+                <div
+                  key={major.id}
+                  className="border border-gray-100 rounded-xl overflow-hidden"
                 >
-                  <CategoryIcon
-                    icon={major.icon}
-                    color={major.color}
-                    size="sm"
-                  />
-                  <span className="flex-1 text-sm font-semibold text-left">
-                    {major.name}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {middleList.length}개 중분류
-                  </span>
-                  {isOpenMajor ? (
-                    <ChevronDown size={14} className="text-gray-400" />
-                  ) : (
-                    <ChevronRight size={14} className="text-gray-400" />
-                  )}
-                </button>
+                  {/* 대분류 행 */}
+                  <button
+                    onClick={() =>
+                      setExpandedMajor(isOpenMajor ? null : major.id)
+                    }
+                    className="w-full flex items-center gap-2 px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <CategoryIcon
+                      icon={major.icon}
+                      color={major.color}
+                      size="sm"
+                    />
+                    <span className="flex-1 text-sm font-semibold text-left">
+                      {major.name}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {middleList.length}개 중분류
+                    </span>
+                    {isOpenMajor ? (
+                      <ChevronDown size={14} className="text-gray-400" />
+                    ) : (
+                      <ChevronRight size={14} className="text-gray-400" />
+                    )}
+                  </button>
 
-                {/* 중분류 목록 */}
-                {isOpenMajor && (
-                  <div className="divide-y divide-gray-50">
-                    {middleList.map((middle) => {
-                      const subList = getChildCategories(categories, middle.id);
-                      const isOpenMiddle = expandedMiddle === middle.id;
+                  {/* 중분류 목록 */}
+                  {isOpenMajor && (
+                    <div className="divide-y divide-gray-50">
+                      {middleList.map((middle) => {
+                        const subList = getChildCategories(
+                          categories,
+                          middle.id,
+                        );
+                        const isOpenMiddle = expandedMiddle === middle.id;
 
-                      const isLegacyMiddle = !validMiddleNames.has(middle.name);
+                        const isLegacyMiddle = !validMiddleNames.has(
+                          middle.name,
+                        );
 
-                      return (
-                        <div key={middle.id}>
-                          {/* 중분류 행 */}
-                          <div className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
-                            <button
-                              onClick={() =>
-                                setExpandedMiddle(
-                                  isOpenMiddle ? null : middle.id,
-                                )
-                              }
-                              className="flex items-center gap-2 flex-1 min-w-0"
-                            >
-                              <CategoryIcon
-                                icon={middle.icon}
-                                color={middle.color}
-                                size="sm"
-                              />
-                              <span className="flex-1 text-sm text-left">
-                                {middle.name}
-                              </span>
-                              {isLegacyMiddle && (
-                                <span className="text-[10px] bg-orange-100 text-orange-500 px-1.5 py-0.5 rounded-full">
-                                  구항목
-                                </span>
-                              )}
-                              <span className="text-xs text-gray-400">
-                                {subList.length}개
-                              </span>
-                              {isOpenMiddle ? (
-                                <ChevronDown
-                                  size={13}
-                                  className="text-gray-400"
-                                />
-                              ) : (
-                                <ChevronRight
-                                  size={13}
-                                  className="text-gray-400"
-                                />
-                              )}
-                            </button>
-                            {isLegacyMiddle && (
+                        return (
+                          <div key={middle.id}>
+                            {/* 중분류 행 */}
+                            <div className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
                               <button
-                                onClick={() => {
-                                  if (
-                                    confirm(
-                                      `"${middle.name}" 카테고리를 삭제하시겠습니까?\n이 카테고리로 등록된 내역도 함께 삭제됩니다.`,
-                                    )
+                                onClick={() =>
+                                  setExpandedMiddle(
+                                    isOpenMiddle ? null : middle.id,
                                   )
-                                    deleteCatMutation.mutate(middle.id);
-                                }}
-                                className="text-gray-300 hover:text-red-400 shrink-0"
+                                }
+                                className="flex items-center gap-2 flex-1 min-w-0"
                               >
-                                <Trash2 size={13} />
-                              </button>
-                            )}
-                          </div>
-
-                          {/* 소분류 목록 */}
-                          {isOpenMiddle && (
-                            <div className="px-4 pb-2 space-y-1">
-                              {subList.map((sub) => (
-                                <div
-                                  key={sub.id}
-                                  className="flex items-center gap-2 pl-2 py-1"
-                                >
-                                  <span className="flex-1 text-xs text-gray-600">
-                                    {sub.name}
+                                <CategoryIcon
+                                  icon={middle.icon}
+                                  color={middle.color}
+                                  size="sm"
+                                />
+                                <span className="flex-1 text-sm text-left">
+                                  {middle.name}
+                                </span>
+                                {isLegacyMiddle && (
+                                  <span className="text-[10px] bg-orange-100 text-orange-500 px-1.5 py-0.5 rounded-full">
+                                    구항목
                                   </span>
-                                  {sub.is_default ? (
-                                    <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
-                                      기본
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={() =>
-                                        deleteCatMutation.mutate(sub.id)
-                                      }
-                                      className="text-gray-300 hover:text-red-400"
-                                    >
-                                      <Trash2 size={12} />
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-
-                              {/* 소분류 추가 */}
-                              {addingSubOf === middle.id ? (
-                                <div className="flex items-center gap-2 pl-2 pt-1">
-                                  <input
-                                    autoFocus
-                                    type="text"
-                                    placeholder="소분류 이름"
-                                    value={newSubName}
-                                    onChange={(e) =>
-                                      setNewSubName(e.target.value)
-                                    }
-                                    onKeyDown={(e) => {
-                                      if (
-                                        e.key === "Enter" &&
-                                        newSubName.trim()
-                                      ) {
-                                        addSubMutation.mutate({
-                                          parentId: middle.id,
-                                          name: newSubName.trim(),
-                                        });
-                                      }
-                                      if (e.key === "Escape") {
-                                        setAddingSubOf(null);
-                                        setNewSubName("");
-                                      }
-                                    }}
-                                    className="flex-1 text-xs border border-teal-300 rounded-lg px-2 py-1 outline-none"
+                                )}
+                                <span className="text-xs text-gray-400">
+                                  {subList.length}개
+                                </span>
+                                {isOpenMiddle ? (
+                                  <ChevronDown
+                                    size={13}
+                                    className="text-gray-400"
                                   />
-                                  <button
-                                    disabled={
-                                      !newSubName.trim() ||
-                                      addSubMutation.isPending
-                                    }
-                                    onClick={() =>
-                                      addSubMutation.mutate({
-                                        parentId: middle.id,
-                                        name: newSubName.trim(),
-                                      })
-                                    }
-                                    className="text-xs text-teal-500 font-medium disabled:opacity-40"
-                                  >
-                                    추가
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setAddingSubOf(null);
-                                      setNewSubName("");
-                                    }}
-                                    className="text-xs text-gray-400"
-                                  >
-                                    취소
-                                  </button>
-                                </div>
-                              ) : (
+                                ) : (
+                                  <ChevronRight
+                                    size={13}
+                                    className="text-gray-400"
+                                  />
+                                )}
+                              </button>
+                              {isLegacyMiddle && (
                                 <button
                                   onClick={() => {
-                                    setAddingSubOf(middle.id);
-                                    setExpandedMiddle(middle.id);
+                                    if (
+                                      confirm(
+                                        `"${middle.name}" 카테고리를 삭제하시겠습니까?\n이 카테고리로 등록된 내역도 함께 삭제됩니다.`,
+                                      )
+                                    )
+                                      deleteCatMutation.mutate(middle.id);
                                   }}
-                                  className="flex items-center gap-1 pl-2 py-1 text-xs text-teal-500 hover:text-teal-600"
+                                  className="text-gray-300 hover:text-red-400 shrink-0"
                                 >
-                                  <Plus size={12} />
-                                  소분류 추가
+                                  <Trash2 size={13} />
                                 </button>
                               )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+
+                            {/* 소분류 목록 */}
+                            {isOpenMiddle && (
+                              <div className="px-4 pb-2 space-y-1">
+                                {subList.map((sub) => (
+                                  <div
+                                    key={sub.id}
+                                    className="flex items-center gap-2 pl-2 py-1"
+                                  >
+                                    <span className="flex-1 text-xs text-gray-600">
+                                      {sub.name}
+                                    </span>
+                                    {sub.is_default ? (
+                                      <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                                        기본
+                                      </span>
+                                    ) : (
+                                      <button
+                                        onClick={() =>
+                                          deleteCatMutation.mutate(sub.id)
+                                        }
+                                        className="text-gray-300 hover:text-red-400"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+
+                                {/* 소분류 추가 */}
+                                {addingSubOf === middle.id ? (
+                                  <div className="flex items-center gap-2 pl-2 pt-1">
+                                    <input
+                                      autoFocus
+                                      type="text"
+                                      placeholder="소분류 이름"
+                                      value={newSubName}
+                                      onChange={(e) =>
+                                        setNewSubName(e.target.value)
+                                      }
+                                      onKeyDown={(e) => {
+                                        if (
+                                          e.key === "Enter" &&
+                                          newSubName.trim()
+                                        ) {
+                                          addSubMutation.mutate({
+                                            parentId: middle.id,
+                                            name: newSubName.trim(),
+                                          });
+                                        }
+                                        if (e.key === "Escape") {
+                                          setAddingSubOf(null);
+                                          setNewSubName("");
+                                        }
+                                      }}
+                                      className="flex-1 text-xs border border-teal-300 rounded-lg px-2 py-1 outline-none"
+                                    />
+                                    <button
+                                      disabled={
+                                        !newSubName.trim() ||
+                                        addSubMutation.isPending
+                                      }
+                                      onClick={() =>
+                                        addSubMutation.mutate({
+                                          parentId: middle.id,
+                                          name: newSubName.trim(),
+                                        })
+                                      }
+                                      className="text-xs text-teal-500 font-medium disabled:opacity-40"
+                                    >
+                                      추가
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setAddingSubOf(null);
+                                        setNewSubName("");
+                                      }}
+                                      className="text-xs text-gray-400"
+                                    >
+                                      취소
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      setAddingSubOf(middle.id);
+                                      setExpandedMiddle(middle.id);
+                                    }}
+                                    className="flex items-center gap-1 pl-2 py-1 text-xs text-teal-500 hover:text-teal-600"
+                                  >
+                                    <Plus size={12} />
+                                    소분류 추가
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ─── 거래출처 관리 ─────────────────────────────── */}
+        <div className="bg-white mt-2 px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase">
+              거래출처 관리
+            </p>
+            <button
+              onClick={() => setAddingSource(true)}
+              className="flex items-center gap-1 text-xs text-teal-500 hover:text-teal-600"
+            >
+              <Plus size={13} />
+              추가
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {paymentSources.map((ps: PaymentSource) => (
+              <div key={ps.id} className="flex items-center gap-3 py-1">
+                <span className="material-symbols-outlined text-base text-gray-400">
+                  credit_card
+                </span>
+                <span className="flex-1 text-sm">{ps.name}</span>
+                {ps.is_default ? (
+                  <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                    기본
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => deleteSourceMutation.mutate(ps.id)}
+                    className="text-gray-300 hover:text-red-400"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 )}
               </div>
-            );
-          })}
-        </div>
-      </div>
+            ))}
 
-      {/* ─── 거래출처 관리 ─────────────────────────────── */}
-      <div className="bg-white mt-2 px-5 py-4 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold text-gray-500 uppercase">
-            거래출처 관리
-          </p>
-          <button
-            onClick={() => setAddingSource(true)}
-            className="flex items-center gap-1 text-xs text-teal-500 hover:text-teal-600"
-          >
-            <Plus size={13} />
-            추가
-          </button>
-        </div>
-
-        <div className="space-y-2">
-          {paymentSources.map((ps: PaymentSource) => (
-            <div key={ps.id} className="flex items-center gap-3 py-1">
-              <span className="material-symbols-outlined text-base text-gray-400">
-                credit_card
-              </span>
-              <span className="flex-1 text-sm">{ps.name}</span>
-              {ps.is_default ? (
-                <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
-                  기본
-                </span>
-              ) : (
+            {addingSource && (
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="거래출처 이름 (예: 체크카드)"
+                  value={newSourceName}
+                  onChange={(e) => setNewSourceName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newSourceName.trim()) {
+                      addSourceMutation.mutate(newSourceName.trim());
+                    }
+                    if (e.key === "Escape") {
+                      setAddingSource(false);
+                      setNewSourceName("");
+                    }
+                  }}
+                  className="flex-1 text-sm border border-teal-300 rounded-xl px-3 py-1.5 outline-none"
+                />
                 <button
-                  onClick={() => deleteSourceMutation.mutate(ps.id)}
-                  className="text-gray-300 hover:text-red-400"
-                >
-                  <Trash2 size={14} />
-                </button>
-              )}
-            </div>
-          ))}
-
-          {addingSource && (
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                autoFocus
-                type="text"
-                placeholder="거래출처 이름 (예: 체크카드)"
-                value={newSourceName}
-                onChange={(e) => setNewSourceName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newSourceName.trim()) {
-                    addSourceMutation.mutate(newSourceName.trim());
+                  disabled={
+                    !newSourceName.trim() || addSourceMutation.isPending
                   }
-                  if (e.key === "Escape") {
+                  onClick={() => addSourceMutation.mutate(newSourceName.trim())}
+                  className="text-sm text-teal-500 font-medium disabled:opacity-40"
+                >
+                  추가
+                </button>
+                <button
+                  onClick={() => {
                     setAddingSource(false);
                     setNewSourceName("");
-                  }
-                }}
-                className="flex-1 text-sm border border-teal-300 rounded-xl px-3 py-1.5 outline-none"
-              />
-              <button
-                disabled={!newSourceName.trim() || addSourceMutation.isPending}
-                onClick={() => addSourceMutation.mutate(newSourceName.trim())}
-                className="text-sm text-teal-500 font-medium disabled:opacity-40"
-              >
-                추가
-              </button>
-              <button
-                onClick={() => {
-                  setAddingSource(false);
-                  setNewSourceName("");
-                }}
-                className="text-sm text-gray-400"
-              >
-                취소
-              </button>
-            </div>
-          )}
+                  }}
+                  className="text-sm text-gray-400"
+                >
+                  취소
+                </button>
+              </div>
+            )}
 
-          {paymentSources.length === 0 && !addingSource && (
-            <p className="text-xs text-gray-400">등록된 거래출처가 없어요</p>
-          )}
+            {paymentSources.length === 0 && !addingSource && (
+              <p className="text-xs text-gray-400">등록된 거래출처가 없어요</p>
+            )}
+          </div>
         </div>
       </div>
 

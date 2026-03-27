@@ -94,10 +94,10 @@ export default function DashboardPage() {
     <div className="flex flex-col h-full">
       <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 md:p-6">
         {/* 요약 카드 */}
         {summary && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 md:gap-4">
             <div className="bg-blue-50 rounded-2xl p-3">
               <p className="text-xs text-blue-400 font-semibold">수입</p>
               <p className="text-sm font-bold text-blue-600 mt-1">
@@ -119,106 +119,109 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 수입 현황 */}
-        <SummarySection
-          transactions={transactions}
-          categories={categories}
-          type="income"
-          title="수입 현황"
-        />
+        {/* 수입/저축 현황 */}
+        <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
+          <SummarySection
+            transactions={transactions}
+            categories={categories}
+            type="income"
+            title="수입 현황"
+          />
+          <SummarySection
+            transactions={transactions}
+            categories={categories}
+            type="savings"
+            title="저축 현황"
+          />
+        </div>
 
-        {/* 저축 현황 */}
-        <SummarySection
-          transactions={transactions}
-          categories={categories}
-          type="savings"
-          title="저축 현황"
-        />
-
-        {/* 지출 현황 (중분류별) */}
-        <ExpenseByMiddleCategory
-          transactions={transactions}
-          categories={categories}
-        />
-
-        {/* 파이 차트 */}
-        {pieData.length > 0 ? (
-          <div className="bg-white rounded-2xl p-4">
-            <h3 className="font-bold text-sm mb-3">카테고리별 지출</h3>
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={75}
-                  dataKey="value"
-                  label={({
-                    name,
-                    percent,
-                    x,
-                    y,
-                    textAnchor,
-                  }: {
-                    name?: string;
-                    percent?: number;
-                    x?: number;
-                    y?: number;
-                    textAnchor?: "start" | "middle" | "end" | "inherit";
-                  }) => (
-                    <text
-                      x={x}
-                      y={y}
-                      textAnchor={textAnchor}
-                      dominantBaseline="central"
-                      fontSize={11}
-                      fill="#555"
-                    >
-                      {`${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                    </text>
-                  )}
-                  labelLine={{ stroke: "#ccc", strokeWidth: 1 }}
-                />
-                <Tooltip formatter={(v) => [formatCurrency(v as number)]} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="mt-2 space-y-1">
-              {pieData.map((d) => (
-                <div
-                  key={d.name}
-                  className="flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: d.color }}
-                    />
-                    <span className="text-gray-600">{d.name}</span>
+        {/* 지출 현황 + 파이 차트 */}
+        <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
+          <ExpenseByMiddleCategory
+            transactions={transactions}
+            categories={categories}
+          />
+          {pieData.length > 0 ? (
+            <div className="bg-white rounded-2xl p-4">
+              <h3 className="font-bold text-sm mb-3">카테고리별 지출</h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={75}
+                    dataKey="value"
+                    label={({
+                      name,
+                      percent,
+                      x,
+                      y,
+                      textAnchor,
+                    }: {
+                      name?: string;
+                      percent?: number;
+                      x?: number;
+                      y?: number;
+                      textAnchor?: "start" | "middle" | "end" | "inherit";
+                    }) => (
+                      <text
+                        x={x}
+                        y={y}
+                        textAnchor={textAnchor}
+                        dominantBaseline="central"
+                        fontSize={11}
+                        fill="#555"
+                      >
+                        {`${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                      </text>
+                    )}
+                    labelLine={{ stroke: "#ccc", strokeWidth: 1 }}
+                  />
+                  <Tooltip formatter={(v) => [formatCurrency(v as number)]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="mt-2 space-y-1">
+                {pieData.map((d) => (
+                  <div
+                    key={d.name}
+                    className="flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: d.color }}
+                      />
+                      <span className="text-gray-600">{d.name}</span>
+                    </div>
+                    <span className="font-semibold">
+                      {formatCurrency(d.value)}
+                    </span>
                   </div>
-                  <span className="font-semibold">
-                    {formatCurrency(d.value)}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl p-4 flex flex-col items-center justify-center h-36 text-gray-500 text-sm">
-            <span className="material-symbols-outlined text-4xl mb-2">
-              pie_chart
-            </span>
-            지출 데이터가 없습니다
-          </div>
-        )}
+          ) : (
+            <div className="bg-white rounded-2xl p-4 flex flex-col items-center justify-center h-36 text-gray-500 text-sm">
+              <span className="material-symbols-outlined text-4xl mb-2">
+                pie_chart
+              </span>
+              지출 데이터가 없습니다
+            </div>
+          )}
+        </div>
 
-        {/* 고정지출 vs 변동지출 */}
-        <FixedVsVariableExpense
-          transactions={transactions}
-          categories={categories}
-        />
-
-        {/* 변동지출 평가 */}
-        <EvaluationReport transactions={transactions} categories={categories} />
+        {/* 고정지출 vs 변동지출 + 변동지출 평가 */}
+        <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
+          <FixedVsVariableExpense
+            transactions={transactions}
+            categories={categories}
+          />
+          <EvaluationReport
+            transactions={transactions}
+            categories={categories}
+          />
+        </div>
 
         {/* 일별 바 차트 */}
         {barData.length > 0 && (

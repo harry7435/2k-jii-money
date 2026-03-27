@@ -113,7 +113,7 @@ export default function TransactionsPage() {
 
       {/* 월 요약 카드 */}
       {summary && (
-        <div className="mx-4 mt-3 p-3 rounded-2xl bg-teal-400 text-white grid grid-cols-4 gap-1">
+        <div className="mx-4 mt-3 p-3 rounded-2xl bg-teal-400 text-white grid grid-cols-4 gap-1 md:mx-6 md:p-4">
           <div className="text-center">
             <p className="text-xs opacity-80">수입</p>
             <p className="font-bold text-xs">
@@ -155,7 +155,7 @@ export default function TransactionsPage() {
         ) : (
           sortedDates.map((date) => (
             <div key={date}>
-              <div className="px-4 py-1.5 bg-gray-50 text-xs text-gray-600 font-semibold">
+              <div className="px-4 py-1.5 bg-gray-50 text-xs text-gray-600 font-semibold md:px-6 md:text-sm">
                 {formatDate(date)}
               </div>
               {grouped[date].map((t) => {
@@ -167,7 +167,7 @@ export default function TransactionsPage() {
                 return (
                   <div
                     key={t.id}
-                    className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors md:px-6 md:py-4 md:gap-4"
                     onClick={() => {
                       setEditingTransaction(t);
                       setShowModal(true);
@@ -181,10 +181,10 @@ export default function TransactionsPage() {
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">
+                      <p className="text-sm font-semibold truncate md:text-base">
                         {getCatLabel(t)}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs text-gray-500 truncate md:whitespace-normal">
                         {mem?.nickname ?? ""}
                         {t.memo && ` · ${t.memo}`}
                         {ps && ` · ${ps.name}`}
@@ -234,7 +234,7 @@ export default function TransactionsPage() {
           setEditingTransaction(null);
           setShowModal(true);
         }}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-teal-400 rounded-full flex items-center justify-center shadow-lg"
+        className="fixed bottom-20 right-4 w-14 h-14 bg-teal-400 rounded-full flex items-center justify-center shadow-lg md:bottom-8 md:right-8"
       >
         <Plus size={28} className="text-white" />
       </button>
