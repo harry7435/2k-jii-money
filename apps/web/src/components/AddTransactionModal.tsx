@@ -182,7 +182,11 @@ export function AddTransactionModal({
     setAmount(digits ? parseInt(digits, 10).toLocaleString("ko-KR") : "");
   };
 
-  const canSubmit = amount && effectiveCategoryId && !mutation.isPending;
+  const canSubmit =
+    amount &&
+    effectiveCategoryId &&
+    (!isExpense || evaluation) &&
+    !mutation.isPending;
 
   const handleSubmit = useCallback(() => {
     if (canSubmit) mutation.mutate();
