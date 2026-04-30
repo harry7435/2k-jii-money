@@ -113,7 +113,7 @@ export function AddTransactionModal({
   const transactionType = selectedMajor
     ? (MAJOR_CATEGORY_TYPE_MAP[selectedMajor.name] ?? "expense")
     : "expense";
-  const isExpense = transactionType === "expense";
+  const isExpense = !!selectedMajor && transactionType === "expense";
 
   // 가장 구체적인 카테고리 ID
   const effectiveCategoryId = subCatId || middleCatId;
@@ -229,6 +229,7 @@ export function AddTransactionModal({
               <button
                 key={mc.id}
                 onClick={() => {
+                  if (majorCatId === mc.id) return;
                   setMajorCatId(mc.id);
                   setMiddleCatId("");
                   setSubCatId("");
