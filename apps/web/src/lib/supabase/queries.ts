@@ -1,6 +1,6 @@
 import { createClient } from "./client";
 import { v4 as uuidv4 } from "uuid";
-import { monthDateRange } from "../utils/formatters";
+import { monthDateRange, getCurrentYearMonth } from "../utils/formatters";
 import {
   DEFAULT_CATEGORY_TREE,
   DEFAULT_PAYMENT_SOURCES,
@@ -357,6 +357,31 @@ export async function getTransactions(
     .lt("date", to)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Transaction[];
+}
+
+export async function getTransactionHistory(
+  familyId: string,
+  months: number,
+): Promise<Transaction[]> {
+  const supabase = createClient();
+  const now = new Date();
+  const oldest = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+  const oldestY = oldest.getFullYear();
+  const oldestM = String(oldest.getMonth() + 1).padStart(2, "0");
+  const oldestYM = `${oldestY}-${oldestM}`;
+  const { from } = monthDateRange(oldestYM);
+  const { to } = monthDateRange(getCurrentYearMonth());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("transactions")
+    .select()
+    .eq("family_id", familyId)
+    .gte("date", from)
+    .lt("date", to)
+    .order("date", { ascending: true })
+    .range(0, 19999);
   if (error) throw error;
   return (data ?? []) as Transaction[];
 }
