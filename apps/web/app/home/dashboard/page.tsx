@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -95,6 +96,22 @@ export default function DashboardPage() {
       <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 md:p-6">
+        {/* 월별 추이 진입 */}
+        <Link
+          href="/home/dashboard/trend"
+          className="flex items-center justify-between bg-white border border-gray-100 rounded-2xl p-3 active:bg-gray-50"
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-500">
+              trending_up
+            </span>
+            <span className="text-sm font-semibold">월별 추이 보기</span>
+          </div>
+          <span className="material-symbols-outlined text-gray-400">
+            chevron_right
+          </span>
+        </Link>
+
         {/* 요약 카드 */}
         {summary && (
           <div className="grid grid-cols-3 gap-2 md:gap-4">

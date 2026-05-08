@@ -37,7 +37,8 @@ export default function HomeLayout({
           <p className="font-bold text-lg text-teal-500">우리집 가계부</p>
         </div>
         {TABS.map((tab) => {
-          const active = pathname === tab.href;
+          const active =
+            pathname === tab.href || pathname.startsWith(tab.href + "/");
           return (
             <Link
               key={tab.href}
