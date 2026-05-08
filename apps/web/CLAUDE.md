@@ -29,7 +29,10 @@ apps/web/
 │       ├── page.tsx            # /home → /home/transactions 리다이렉트
 │       ├── transactions/page.tsx
 │       ├── budget/page.tsx
-│       ├── dashboard/page.tsx
+│       ├── dashboard/
+│       │   ├── page.tsx
+│       │   └── trend/page.tsx  # 최근 12개월 추이 (라인/스택 바 차트)
+│       ├── assets/page.tsx
 │       └── settings/page.tsx
 ├── src/
 │   ├── components/             # 공통 컴포넌트
@@ -39,7 +42,9 @@ apps/web/
 │   │   ├── BudgetProgressBar.tsx
 │   │   ├── CategoryIcon.tsx
 │   │   ├── MonthSelector.tsx
-│   │   └── dashboard/          # 대시보드 서브 컴포넌트
+│   │   ├── dashboard/          # 대시보드 서브 컴포넌트
+│   │   ├── trend/              # 월별 추이 차트 + 카테고리 멀티셀렉트
+│   │   └── assets/             # 자산 현황 컴포넌트
 │   └── lib/
 │       ├── providers.tsx       # QueryClientProvider 래퍼
 │       ├── store/
@@ -50,15 +55,18 @@ apps/web/
 │       │   └── queries.ts      # 모든 DB 쿼리 함수
 │       ├── utils/
 │       │   ├── formatters.ts
-│       │   └── categoryUtils.ts  # getCategoriesByLevel, getChildCategories, getCategoryPath
+│       │   ├── categoryUtils.ts  # getCategoriesByLevel, getChildCategories, getCategoryPath
+│       │   └── trendUtils.ts     # 월별 집계 (buildMonthList, aggregateMonthly*)
 │       └── constants/
 │           └── categories.ts   # DEFAULT_CATEGORY_TREE, DEFAULT_PAYMENT_SOURCES, MAJOR_CATEGORY_TYPE_MAP
+├── vitest.config.mts           # Vitest 설정 (확장자 .mts로 ESM 강제)
 └── package.json
 ```
 
 ## 핵심 패턴 및 규칙
 
 상세 규칙은 `.claude/rules/` 참조:
+
 - `supabase.md` — Supabase 클라이언트 사용, 데이터 페칭 패턴
 - `zustand-hydration.md` — Zustand 전역 상태, persist hydration 및 `useHasHydrated()` 훅
 - `style.md` — Tailwind v4, 아이콘, 모달·바텀시트·DateTimePicker 패턴
@@ -73,11 +81,16 @@ pnpm dev:web
 
 # 웹 앱 디렉토리에서 직접
 cd apps/web && pnpm dev
+
+# 테스트 (apps/web 디렉토리에서)
+pnpm test         # watch 모드
+pnpm test:run     # 1회 실행 (CI/검증용)
 ```
 
 ## 환경 변수
 
 `apps/web/.env.local`:
+
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
