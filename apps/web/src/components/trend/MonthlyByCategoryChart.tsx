@@ -42,7 +42,7 @@ export function MonthlyByCategoryChart({ result }: Props) {
 
   return (
     <div className="bg-white rounded-2xl p-4">
-      <h3 className="font-bold text-sm mb-3">중분류별 지출 추이 (상위 5)</h3>
+      <h3 className="font-bold text-sm mb-3">중분류별 지출 추이</h3>
       <ResponsiveContainer width="100%" height={240}>
         <LineChart
           data={chartData}

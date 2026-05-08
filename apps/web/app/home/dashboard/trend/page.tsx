@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFamilyStore } from "@/src/lib/store/familyStore";
 import {
@@ -11,14 +11,17 @@ import {
 import {
   buildMonthList,
   aggregateMonthlyTotals,
-  aggregateMonthlyByMiddleCategory,
+  summarizeMiddleCategories,
+  aggregateMonthlyBySelectedCategories,
   aggregateMonthlyEvaluation,
 } from "@/src/lib/utils/trendUtils";
 import { MonthlyTotalsChart } from "@/src/components/trend/MonthlyTotalsChart";
 import { MonthlyByCategoryChart } from "@/src/components/trend/MonthlyByCategoryChart";
 import { MonthlyEvaluationChart } from "@/src/components/trend/MonthlyEvaluationChart";
+import { CategorySelector } from "@/src/components/trend/CategorySelector";
 
 const MONTHS = 12;
+const DEFAULT_TOP_N = 5;
 
 export default function TrendPage() {
   const { family } = useFamilyStore();
@@ -41,13 +44,32 @@ export default function TrendPage() {
     () => aggregateMonthlyTotals(transactions, monthList),
     [transactions, monthList],
   );
-  const byCategory = useMemo(
-    () => aggregateMonthlyByMiddleCategory(transactions, categories, monthList),
-    [transactions, categories, monthList],
+  const availableCategories = useMemo(
+    () => summarizeMiddleCategories(transactions, categories),
+    [transactions, categories],
   );
   const byEval = useMemo(
     () => aggregateMonthlyEvaluation(transactions, categories, monthList),
     [transactions, categories, monthList],
+  );
+
+  // 사용자 선택을 보존. null이면 "아직 선택 안 함" → 상위 5개 기본값 사용.
+  const [userSelectedIds, setUserSelectedIds] = useState<string[] | null>(null);
+  const defaultIds = useMemo(
+    () => availableCategories.slice(0, DEFAULT_TOP_N).map((c) => c.id),
+    [availableCategories],
+  );
+  const selectedIds = userSelectedIds ?? defaultIds;
+
+  const byCategory = useMemo(
+    () =>
+      aggregateMonthlyBySelectedCategories(
+        transactions,
+        categories,
+        monthList,
+        selectedIds,
+      ),
+    [transactions, categories, monthList, selectedIds],
   );
 
   const hasData = transactions.length > 0;
@@ -77,7 +99,22 @@ export default function TrendPage() {
         ) : (
           <>
             <MonthlyTotalsChart data={totals} />
-            <MonthlyByCategoryChart result={byCategory} />
+
+            <div className="space-y-2">
+              <CategorySelector
+                available={availableCategories}
+                selectedIds={selectedIds}
+                onChange={setUserSelectedIds}
+              />
+              {selectedIds.length === 0 ? (
+                <div className="bg-white rounded-2xl p-6 text-center text-gray-400 text-sm">
+                  카테고리를 선택해주세요
+                </div>
+              ) : (
+                <MonthlyByCategoryChart result={byCategory} />
+              )}
+            </div>
+
             <MonthlyEvaluationChart data={byEval} />
           </>
         )}
