@@ -59,27 +59,28 @@ export interface CategorySeries {
   color: string;
 }
 
+export interface MiddleCategorySummary extends CategorySeries {
+  total: number;
+}
+
 export interface MonthlyByCategoryResult {
   data: Array<Record<string, string | number>>;
   series: CategorySeries[];
 }
 
 /**
- * 월별 중분류 카테고리별 지출 추이. 12개월 누적 합 기준 상위 topN만 series로 반환.
- * 각 row는 { month, [categoryId1]: number, [categoryId2]: number, ... } 형태.
- * 차트 dataKey 충돌 방지를 위해 카테고리 ID를 key로 사용하고 series.name은 표시용.
+ * 모든 중분류 카테고리의 12개월 누적 지출 합을 내림차순으로 반환.
+ * 카테고리 선택 UI에서 사용. 거래가 0건인 카테고리는 포함하지 않음.
  */
-export function aggregateMonthlyByMiddleCategory(
+export function summarizeMiddleCategories(
   transactions: Transaction[],
   categories: Category[],
-  monthList: string[],
-  topN: number = 5,
-): MonthlyByCategoryResult {
+): MiddleCategorySummary[] {
   const totals = new Map<string, number>();
   const meta = new Map<string, { name: string; color: string }>();
-  const expenseTxs = transactions.filter((t) => t.type === "expense");
 
-  for (const t of expenseTxs) {
+  for (const t of transactions) {
+    if (t.type !== "expense") continue;
     const middle = findMiddleCategory(t.category_id, categories);
     if (!middle) continue;
     totals.set(middle.id, (totals.get(middle.id) ?? 0) + t.amount);
@@ -88,26 +89,44 @@ export function aggregateMonthlyByMiddleCategory(
     }
   }
 
-  const topIds = [...totals.entries()]
+  return [...totals.entries()]
     .sort(([, a], [, b]) => b - a)
-    .slice(0, topN)
-    .map(([id]) => id);
+    .map(([id, total]) => ({
+      id,
+      name: meta.get(id)!.name,
+      color: meta.get(id)!.color,
+      total,
+    }));
+}
 
-  const series: CategorySeries[] = topIds.map((id) => ({
-    id,
-    name: meta.get(id)!.name,
-    color: meta.get(id)!.color,
-  }));
-  const topSet = new Set(topIds);
+/**
+ * 선택된 중분류 카테고리들의 월별 지출 추이.
+ * series 순서는 selectedIds의 12개월 누적 합 내림차순.
+ * 각 row는 { month, [categoryId1]: number, ... } 형태.
+ */
+export function aggregateMonthlyBySelectedCategories(
+  transactions: Transaction[],
+  categories: Category[],
+  monthList: string[],
+  selectedIds: string[],
+): MonthlyByCategoryResult {
+  const summary = summarizeMiddleCategories(transactions, categories);
+  // summary는 누적 합 내림차순. selectedIds에 포함된 것만 필터링하면 정렬도 유지됨.
+  const inputSet = new Set(selectedIds);
+  const series: CategorySeries[] = summary
+    .filter((s) => inputSet.has(s.id))
+    .map(({ id, name, color }) => ({ id, name, color }));
+
+  const selectedSet = new Set(series.map((s) => s.id));
 
   const monthMap = new Map<string, Record<string, number>>();
   for (const m of monthList) monthMap.set(m, {});
 
-  for (const t of expenseTxs) {
+  for (const t of transactions) {
+    if (t.type !== "expense") continue;
     const middle = findMiddleCategory(t.category_id, categories);
-    if (!middle || !topSet.has(middle.id)) continue;
-    const ym = txYearMonth(t);
-    const row = monthMap.get(ym);
+    if (!middle || !selectedSet.has(middle.id)) continue;
+    const row = monthMap.get(txYearMonth(t));
     if (!row) continue;
     row[middle.id] = (row[middle.id] ?? 0) + t.amount;
   }
@@ -115,8 +134,8 @@ export function aggregateMonthlyByMiddleCategory(
   const data = monthList.map((m) => {
     const row: Record<string, string | number> = { month: m };
     const counts = monthMap.get(m) ?? {};
-    for (const id of topIds) {
-      row[id] = counts[id] ?? 0;
+    for (const s of series) {
+      row[s.id] = counts[s.id] ?? 0;
     }
     return row;
   });

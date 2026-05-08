@@ -3,7 +3,8 @@ import type { Category, Transaction } from "@2k-jii-money/supabase-types";
 import {
   buildMonthList,
   aggregateMonthlyTotals,
-  aggregateMonthlyByMiddleCategory,
+  summarizeMiddleCategories,
+  aggregateMonthlyBySelectedCategories,
   aggregateMonthlyEvaluation,
 } from "./trendUtils";
 
@@ -140,7 +141,7 @@ describe("aggregateMonthlyTotals", () => {
   });
 });
 
-describe("aggregateMonthlyByMiddleCategory", () => {
+describe("summarizeMiddleCategories / aggregateMonthlyBySelectedCategories", () => {
   const monthList = buildMonthList(12, REF);
 
   // 6개의 중분류 + 각자의 소분류를 만든다
@@ -159,105 +160,135 @@ describe("aggregateMonthlyByMiddleCategory", () => {
     makeCategory({ id: "s6", level: 3, parent_id: "m6" }),
   ];
 
-  it("picks top 5 by 12-month total in descending order", () => {
-    const txs: Transaction[] = [
-      makeTransaction({
-        id: "a",
-        category_id: "s1",
-        amount: 600,
-        date: "2026-04-01",
-      }),
-      makeTransaction({
-        id: "b",
-        category_id: "s2",
-        amount: 500,
-        date: "2026-04-01",
-      }),
-      makeTransaction({
-        id: "c",
-        category_id: "s3",
-        amount: 400,
-        date: "2026-04-01",
-      }),
-      makeTransaction({
-        id: "d",
-        category_id: "s4",
-        amount: 300,
-        date: "2026-04-01",
-      }),
-      makeTransaction({
-        id: "e",
-        category_id: "s5",
-        amount: 200,
-        date: "2026-04-01",
-      }),
-      makeTransaction({
-        id: "f",
-        category_id: "s6",
-        amount: 100,
-        date: "2026-04-01",
-      }),
-    ];
-    const { series, data } = aggregateMonthlyByMiddleCategory(
-      txs,
-      categories,
-      monthList,
-      5,
-    );
-    expect(series.map((s) => s.id)).toEqual(["m1", "m2", "m3", "m4", "m5"]);
-    expect(series[0].name).toBe("식비");
-    expect(series[0].color).toBe("#f00");
+  const sixTxs: Transaction[] = [
+    makeTransaction({
+      id: "a",
+      category_id: "s1",
+      amount: 600,
+      date: "2026-04-01",
+    }),
+    makeTransaction({
+      id: "b",
+      category_id: "s2",
+      amount: 500,
+      date: "2026-04-01",
+    }),
+    makeTransaction({
+      id: "c",
+      category_id: "s3",
+      amount: 400,
+      date: "2026-04-01",
+    }),
+    makeTransaction({
+      id: "d",
+      category_id: "s4",
+      amount: 300,
+      date: "2026-04-01",
+    }),
+    makeTransaction({
+      id: "e",
+      category_id: "s5",
+      amount: 200,
+      date: "2026-04-01",
+    }),
+    makeTransaction({
+      id: "f",
+      category_id: "s6",
+      amount: 100,
+      date: "2026-04-01",
+    }),
+  ];
 
-    const apr = data[11];
-    expect(apr.month).toBe("2026-04");
-    expect(apr["m1"]).toBe(600);
-    expect(apr["m6"]).toBeUndefined(); // 상위 5개 외
+  describe("summarizeMiddleCategories", () => {
+    it("returns all middle categories sorted by total descending", () => {
+      const summary = summarizeMiddleCategories(sixTxs, categories);
+      expect(summary.map((s) => s.id)).toEqual([
+        "m1",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "m6",
+      ]);
+      expect(summary[0]).toMatchObject({
+        id: "m1",
+        name: "식비",
+        color: "#f00",
+        total: 600,
+      });
+    });
+
+    it("excludes categories with zero expense", () => {
+      const txs: Transaction[] = [
+        makeTransaction({
+          id: "a",
+          category_id: "s1",
+          amount: 100,
+          date: "2026-04-01",
+        }),
+      ];
+      const summary = summarizeMiddleCategories(txs, categories);
+      expect(summary).toHaveLength(1);
+      expect(summary[0].id).toBe("m1");
+    });
+
+    it("ignores non-expense transactions and unknown category_ids", () => {
+      const txs: Transaction[] = [
+        makeTransaction({
+          id: "a",
+          type: "income",
+          category_id: "s1",
+          amount: 1000,
+          date: "2026-04-01",
+        }),
+        makeTransaction({
+          id: "b",
+          category_id: "ghost",
+          amount: 999,
+          date: "2026-04-01",
+        }),
+      ];
+      expect(summarizeMiddleCategories(txs, categories)).toEqual([]);
+    });
   });
 
-  it("excludes transactions whose category is missing from the categories list", () => {
-    const txs: Transaction[] = [
-      makeTransaction({
-        id: "a",
-        category_id: "s1",
-        amount: 100,
-        date: "2026-04-01",
-      }),
-      makeTransaction({
-        id: "b",
-        category_id: "ghost",
-        amount: 999,
-        date: "2026-04-01",
-      }),
-    ];
-    const { series } = aggregateMonthlyByMiddleCategory(
-      txs,
-      categories,
-      monthList,
-      5,
-    );
-    expect(series).toHaveLength(1);
-    expect(series[0].id).toBe("m1");
-  });
+  describe("aggregateMonthlyBySelectedCategories", () => {
+    it("returns only selected categories ordered by total descending", () => {
+      const { series, data } = aggregateMonthlyBySelectedCategories(
+        sixTxs,
+        categories,
+        monthList,
+        ["m3", "m1", "m6"], // 입력 순서와 무관하게 누적 합 내림차순
+      );
+      expect(series.map((s) => s.id)).toEqual(["m1", "m3", "m6"]);
 
-  it("returns empty series when there are no expense transactions", () => {
-    const txs: Transaction[] = [
-      makeTransaction({
-        id: "a",
-        type: "income",
-        category_id: "s1",
-        amount: 1000,
-        date: "2026-04-01",
-      }),
-    ];
-    const { series, data } = aggregateMonthlyByMiddleCategory(
-      txs,
-      categories,
-      monthList,
-      5,
-    );
-    expect(series).toEqual([]);
-    // data는 month만 있고 카테고리 키는 없음
-    expect(Object.keys(data[0])).toEqual(["month"]);
+      const apr = data[11];
+      expect(apr["m1"]).toBe(600);
+      expect(apr["m3"]).toBe(400);
+      expect(apr["m6"]).toBe(100);
+      expect(apr["m2"]).toBeUndefined(); // 선택 안 됨
+    });
+
+    it("returns empty series when selectedIds is empty", () => {
+      const { series, data } = aggregateMonthlyBySelectedCategories(
+        sixTxs,
+        categories,
+        monthList,
+        [],
+      );
+      expect(series).toEqual([]);
+      expect(Object.keys(data[0])).toEqual(["month"]);
+    });
+
+    it("filters out unknown ids from selectedIds", () => {
+      const { series } = aggregateMonthlyBySelectedCategories(
+        sixTxs,
+        categories,
+        monthList,
+        ["m1", "ghost", "m2"],
+      );
+      expect(series.map((s) => s.id)).toEqual(["m1", "m2"]);
+    });
   });
 });
 
