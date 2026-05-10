@@ -112,6 +112,38 @@ describe("aggregateMonthlyTotals", () => {
     expect(apr.savings).toBe(500);
   });
 
+  it("nets savings deposits and withdrawals as positive savings", () => {
+    const txs = [
+      makeTransaction({
+        id: "1",
+        type: "savings",
+        amount: 100000,
+        date: "2026-04-05",
+      }),
+      makeTransaction({
+        id: "2",
+        type: "savings",
+        amount: -30000,
+        date: "2026-04-20",
+      }),
+    ];
+    const result = aggregateMonthlyTotals(txs, monthList);
+    expect(result[11].savings).toBe(70000);
+  });
+
+  it("yields negative savings when withdrawals exceed deposits", () => {
+    const txs = [
+      makeTransaction({
+        id: "1",
+        type: "savings",
+        amount: -50000,
+        date: "2026-04-05",
+      }),
+    ];
+    const result = aggregateMonthlyTotals(txs, monthList);
+    expect(result[11].savings).toBe(-50000);
+  });
+
   it("isolates totals across months and ignores out-of-window transactions", () => {
     const txs = [
       makeTransaction({

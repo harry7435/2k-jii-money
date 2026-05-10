@@ -196,18 +196,30 @@ export default function TransactionsPage() {
                       </p>
                     </div>
                     <div className="text-right flex items-center gap-2">
-                      <p
-                        className={`font-bold text-sm ${
+                      {(() => {
+                        const isWithdrawal =
+                          t.type === "savings" && t.amount < 0;
+                        const sign =
+                          t.type === "income" || t.type === "savings"
+                            ? t.amount < 0
+                              ? "-"
+                              : "+"
+                            : "-";
+                        const colorClass =
                           t.type === "income"
                             ? "text-blue-500"
                             : t.type === "savings"
-                              ? "text-teal-500"
-                              : "text-gray-900"
-                        }`}
-                      >
-                        {t.type === "income" ? "+" : "-"}
-                        {formatCurrency(t.amount)}
-                      </p>
+                              ? isWithdrawal
+                                ? "text-orange-500"
+                                : "text-teal-500"
+                              : "text-gray-900";
+                        return (
+                          <p className={`font-bold text-sm ${colorClass}`}>
+                            {sign}
+                            {formatCurrency(Math.abs(t.amount))}
+                          </p>
+                        );
+                      })()}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
