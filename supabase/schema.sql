@@ -45,7 +45,7 @@ CREATE TABLE transactions (
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
   type VARCHAR NOT NULL CHECK (type IN ('income', 'expense', 'savings')),
-  amount INTEGER NOT NULL CHECK (amount > 0),
+  amount INTEGER NOT NULL CHECK ((type = 'savings' AND amount != 0) OR (type IN ('income', 'expense') AND amount > 0)),
   memo TEXT,
   date DATE NOT NULL,
   time VARCHAR(5),
