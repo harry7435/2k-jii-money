@@ -69,7 +69,14 @@ export function AddTransactionModal({
   const [middleCatId, setMiddleCatId] = useState(editPath?.[1]?.id ?? "");
   const [subCatId, setSubCatId] = useState(editPath?.[2]?.id ?? "");
   const [amount, setAmount] = useState(
-    editingTransaction ? editingTransaction.amount.toLocaleString("ko-KR") : "",
+    editingTransaction
+      ? Math.abs(editingTransaction.amount).toLocaleString("ko-KR")
+      : "",
+  );
+  const [savingsDirection, setSavingsDirection] = useState<"in" | "out">(
+    editingTransaction?.type === "savings" && editingTransaction.amount < 0
+      ? "out"
+      : "in",
   );
   const [date, setDate] = useState(
     editingTransaction?.date ?? format(new Date(), "yyyy-MM-dd"),
@@ -126,7 +133,14 @@ export function AddTransactionModal({
     setMemo("");
     setPaymentSourceId("");
     setEvaluation("");
+    setSavingsDirection("in");
   }, []);
+
+  const parsedAmount = parseInt(amount.replace(/,/g, ""), 10);
+  const signedAmount =
+    transactionType === "savings" && savingsDirection === "out"
+      ? -parsedAmount
+      : parsedAmount;
 
   const invalidateQueries = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["transactions", familyId, yearMonth] });
@@ -140,7 +154,7 @@ export function AddTransactionModal({
         memberId,
         categoryId: effectiveCategoryId,
         type: transactionType,
-        amount: parseInt(amount.replace(/,/g, ""), 10),
+        amount: signedAmount,
         memo: memo || undefined,
         date,
         time: time || undefined,
@@ -161,7 +175,7 @@ export function AddTransactionModal({
       updateTransaction(editingTransaction!.id, {
         categoryId: effectiveCategoryId,
         type: transactionType,
-        amount: parseInt(amount.replace(/,/g, ""), 10),
+        amount: signedAmount,
         memo: memo || undefined,
         date,
         time: time || undefined,
@@ -234,6 +248,7 @@ export function AddTransactionModal({
                   setMiddleCatId("");
                   setSubCatId("");
                   setEvaluation("");
+                  setSavingsDirection("in");
                 }}
                 className={`flex-1 py-2 text-sm font-semibold transition-colors ${
                   majorCatId === mc.id
@@ -313,6 +328,32 @@ export function AddTransactionModal({
               />
               <span className="ml-1 text-gray-600">원</span>
             </div>
+            {transactionType === "savings" && (
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setSavingsDirection("in")}
+                  className={`flex-1 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                    savingsDirection === "in"
+                      ? "border-teal-400 bg-teal-50 text-teal-700"
+                      : "border-gray-200 text-gray-600"
+                  }`}
+                >
+                  + 입금
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSavingsDirection("out")}
+                  className={`flex-1 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                    savingsDirection === "out"
+                      ? "border-orange-400 bg-orange-50 text-orange-700"
+                      : "border-gray-200 text-gray-600"
+                  }`}
+                >
+                  − 출금
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 날짜 & 시간 */}
