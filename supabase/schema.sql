@@ -85,6 +85,14 @@ ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_sources ENABLE ROW LEVEL SECURITY;
 
 -- anon 사용자에게 모든 작업 허용 (가족 코드로 접근 제어)
+-- GRANT: 2026-05-30 이후 신규 프로젝트, 2026-10-30 이후 전체 프로젝트에서 필수
+GRANT SELECT, INSERT, UPDATE, DELETE ON families TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON members TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON categories TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON transactions TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON budgets TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON payment_sources TO anon;
+
 CREATE POLICY "Allow all for anon" ON families FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON members FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON categories FOR ALL TO anon USING (true) WITH CHECK (true);

@@ -12,6 +12,7 @@ CREATE TABLE asset_accounts (
 
 CREATE INDEX idx_asset_accounts_family ON asset_accounts(family_id);
 ALTER TABLE asset_accounts ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON asset_accounts TO anon;
 CREATE POLICY "Allow all for anon" ON asset_accounts FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- 월별 잔고 스냅샷
@@ -28,6 +29,7 @@ CREATE TABLE asset_snapshots (
 
 CREATE INDEX idx_asset_snapshots_family_month ON asset_snapshots(family_id, year_month);
 ALTER TABLE asset_snapshots ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON asset_snapshots TO anon;
 CREATE POLICY "Allow all for anon" ON asset_snapshots FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- Realtime 구독

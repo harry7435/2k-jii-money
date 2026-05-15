@@ -17,6 +17,7 @@ CREATE TABLE payment_sources (
 );
 CREATE INDEX idx_payment_sources_family ON payment_sources(family_id);
 ALTER TABLE payment_sources ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON payment_sources TO anon;
 CREATE POLICY "Allow all for anon" ON payment_sources FOR ALL TO anon USING (true) WITH CHECK (true);
 ALTER PUBLICATION supabase_realtime ADD TABLE payment_sources;
 
