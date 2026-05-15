@@ -27,6 +27,7 @@ import {
 } from "@/src/lib/utils/formatters";
 import { findMiddleCategory } from "@/src/lib/utils/categoryUtils";
 import { MonthSelector } from "@/src/components/MonthSelector";
+import { MonthlyNoteCard } from "@/src/components/dashboard/MonthlyNoteCard";
 import { SummarySection } from "@/src/components/dashboard/SummarySection";
 import { ExpenseByMiddleCategory } from "@/src/components/dashboard/ExpenseByMiddleCategory";
 import { FixedVsVariableExpense } from "@/src/components/dashboard/FixedVsVariableExpense";
@@ -96,6 +97,11 @@ export default function DashboardPage() {
       <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 md:p-6">
+        {/* 이 달의 메모 */}
+        {familyId && (
+          <MonthlyNoteCard familyId={familyId} yearMonth={yearMonth} />
+        )}
+
         {/* 월별 추이 진입 */}
         <Link
           href="/home/dashboard/trend"

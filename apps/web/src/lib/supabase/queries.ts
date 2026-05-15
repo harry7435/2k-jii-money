@@ -17,6 +17,7 @@ import type {
   AssetAccount,
   AssetSnapshot,
   AssetAccountType,
+  MonthlyNote,
 } from "@2k-jii-money/supabase-types";
 
 const FAMILY_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -664,6 +665,43 @@ export async function upsertAssetSnapshot(
     .single();
   if (error) throw error;
   return data as AssetSnapshot;
+}
+
+// ─── Monthly Notes ────────────────────────────────────────────────────────
+
+export async function getMonthlyNote(
+  familyId: string,
+  yearMonth: string,
+): Promise<MonthlyNote | null> {
+  const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any)
+    .from("monthly_notes")
+    .select()
+    .eq("family_id", familyId)
+    .eq("year_month", yearMonth)
+    .single();
+  return (data as MonthlyNote) ?? null;
+}
+
+export async function upsertMonthlyNote(
+  familyId: string,
+  yearMonth: string,
+  content: string,
+): Promise<void> {
+  const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from("monthly_notes").upsert(
+    {
+      id: uuidv4(),
+      family_id: familyId,
+      year_month: yearMonth,
+      content,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "family_id,year_month" },
+  );
+  if (error) throw error;
 }
 
 export async function getAssetSnapshotHistory(

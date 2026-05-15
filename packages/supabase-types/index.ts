@@ -37,6 +37,16 @@ export type AssetAccountType =
   | "other"
   | "liability";
 
+// Monthly notes
+export type MonthlyNote = {
+  id: string;
+  family_id: string;
+  year_month: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+};
+
 // Enums
 export type TransactionType = "income" | "expense" | "savings";
 export type EvaluationType = "consumption" | "waste" | "investment";
