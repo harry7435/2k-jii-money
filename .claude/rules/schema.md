@@ -15,10 +15,23 @@
 
 가족별 결제 수단 (신용카드, 상품권, 현금 등). `sort_order`로 순서 관리.
 
+## monthly_notes 테이블
+
+월별 특이사항 메모. `(family_id, year_month)` unique key로 가족당 월 1행.
+저장은 upsert(`onConflict: 'family_id,year_month'`) 방식 사용.
+
+| 컬럼         | 타입         | 비고                        |
+| ------------ | ------------ | --------------------------- |
+| `family_id`  | `UUID FK`    | families 참조               |
+| `year_month` | `VARCHAR(7)` | `YYYY-MM` 형식              |
+| `content`    | `TEXT`       | 빈 문자열 허용, 기본값 `''` |
+
 ## 마이그레이션 파일
 
 `supabase/migrations/` 디렉토리에 순번 관리:
 
-- `001_initial_schema.sql`
+- `001_hierarchical_categories.sql` — 카테고리 3단계 계층 구조, payment_sources 테이블 추가
 - `002_add_time_to_transactions.sql` — `time VARCHAR(5)` 컬럼 추가
 - `003_allow_negative_savings.sql` — `savings` 타입에 한해 `amount` 음수 허용 (저축 인출)
+- `003_asset_snapshots.sql` — asset_accounts, asset_snapshots 테이블 추가
+- `004_monthly_notes.sql` — monthly_notes 테이블 추가
