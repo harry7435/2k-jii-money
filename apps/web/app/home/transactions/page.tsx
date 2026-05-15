@@ -180,7 +180,7 @@ export default function TransactionsPage() {
                           <span className="text-[10px] font-semibold">
                             수입
                           </span>
-                          {income.toLocaleString("ko-KR")}
+                          {formatCurrency(income)}
                         </span>
                       )}
                       {expense > 0 && (
@@ -188,7 +188,7 @@ export default function TransactionsPage() {
                           <span className="text-[10px] font-semibold">
                             지출
                           </span>
-                          {expense.toLocaleString("ko-KR")}
+                          {formatCurrency(expense)}
                         </span>
                       )}
                       {savings !== 0 && (
@@ -198,7 +198,7 @@ export default function TransactionsPage() {
                           <span className="text-[10px] font-semibold">
                             저축
                           </span>
-                          {Math.abs(savings).toLocaleString("ko-KR")}
+                          {formatCurrency(Math.abs(savings))}
                         </span>
                       )}
                     </span>
