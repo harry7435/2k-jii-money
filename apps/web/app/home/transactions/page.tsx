@@ -90,6 +90,18 @@ export default function TransactionsPage() {
   );
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
+  function getDailyTotals(txs: Transaction[]) {
+    let income = 0;
+    let expense = 0;
+    let savings = 0;
+    for (const t of txs) {
+      if (t.type === "income") income += t.amount;
+      else if (t.type === "expense") expense += t.amount;
+      else if (t.type === "savings") savings += t.amount;
+    }
+    return { income, expense, savings };
+  }
+
   /** 카테고리 라벨: 중분류 > 소분류 */
   function getCatLabel(t: Transaction) {
     const path = getCategoryPath(t.category_id, categories);
@@ -155,8 +167,43 @@ export default function TransactionsPage() {
         ) : (
           sortedDates.map((date) => (
             <div key={date}>
-              <div className="px-4 py-1.5 bg-gray-50 text-xs text-gray-600 font-semibold md:px-6 md:text-sm">
-                {formatDate(date)}
+              <div className="px-4 py-1.5 bg-gray-50 text-xs text-gray-600 font-semibold flex items-center justify-between md:px-6 md:text-sm">
+                <span>{formatDate(date)}</span>
+                {(() => {
+                  const { income, expense, savings } = getDailyTotals(
+                    grouped[date],
+                  );
+                  return (
+                    <span className="flex gap-2 font-normal">
+                      {income > 0 && (
+                        <span className="flex items-baseline gap-0.5 text-blue-500">
+                          <span className="text-[10px] font-semibold">
+                            수입
+                          </span>
+                          {income.toLocaleString("ko-KR")}
+                        </span>
+                      )}
+                      {expense > 0 && (
+                        <span className="flex items-baseline gap-0.5 text-gray-500">
+                          <span className="text-[10px] font-semibold">
+                            지출
+                          </span>
+                          {expense.toLocaleString("ko-KR")}
+                        </span>
+                      )}
+                      {savings !== 0 && (
+                        <span
+                          className={`flex items-baseline gap-0.5 ${savings < 0 ? "text-orange-500" : "text-teal-500"}`}
+                        >
+                          <span className="text-[10px] font-semibold">
+                            저축
+                          </span>
+                          {Math.abs(savings).toLocaleString("ko-KR")}
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
               </div>
               {grouped[date].map((t) => {
                 const displayCat = getCatDisplay(t);
