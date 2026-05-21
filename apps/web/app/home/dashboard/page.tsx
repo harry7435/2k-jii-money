@@ -163,6 +163,7 @@ export default function DashboardPage() {
           <ExpenseByMiddleCategory
             transactions={transactions}
             categories={categories}
+            yearMonth={yearMonth}
           />
           {pieData.length > 0 ? (
             <div className="bg-white rounded-2xl p-4">
