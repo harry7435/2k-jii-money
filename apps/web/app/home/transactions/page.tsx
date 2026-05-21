@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { Plus, Trash2, SlidersHorizontal, X } from "lucide-react";
 import { useFamilyStore } from "@/src/lib/store/familyStore";
 import {
   getTransactions,
@@ -19,19 +20,56 @@ import {
   formatTime,
 } from "@/src/lib/utils/formatters";
 import { EVALUATION_LABELS } from "@/src/lib/constants/categories";
-import { getCategoryPath } from "@/src/lib/utils/categoryUtils";
+import {
+  getCategoryPath,
+  findMiddleCategory,
+} from "@/src/lib/utils/categoryUtils";
 import { MonthSelector } from "@/src/components/MonthSelector";
 import { AddTransactionModal } from "@/src/components/AddTransactionModal";
 import { CategoryIcon } from "@/src/components/CategoryIcon";
+import {
+  TransactionFilterPanel,
+  type TransactionFilter,
+} from "@/src/components/transactions/TransactionFilterPanel";
 import type { Transaction } from "@2k-jii-money/supabase-types";
 
-export default function TransactionsPage() {
+const TYPE_LABELS: Record<string, string> = {
+  income: "수입",
+  expense: "지출",
+  savings: "저축",
+};
+
+function parseFilter(
+  searchParams: ReturnType<typeof useSearchParams>,
+): TransactionFilter {
+  return {
+    types: (searchParams.get("types") ?? "").split(",").filter(Boolean),
+    middleCategoryId: searchParams.get("middleCategoryId") ?? "",
+    subCategoryId: searchParams.get("subCategoryId") ?? "",
+    evaluations: (searchParams.get("evaluations") ?? "")
+      .split(",")
+      .filter(Boolean),
+    dateFrom: searchParams.get("dateFrom") ?? "",
+    dateTo: searchParams.get("dateTo") ?? "",
+  };
+}
+
+function TransactionsPageInner() {
   const { family, member } = useFamilyStore();
   const qc = useQueryClient();
-  const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [yearMonth, setYearMonth] = useState(
+    () => searchParams.get("month") ?? getCurrentYearMonth(),
+  );
   const [showModal, setShowModal] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
+
+  const filter = useMemo(() => parseFilter(searchParams), [searchParams]);
 
   const familyId = family?.id ?? "";
 
@@ -80,8 +118,91 @@ export default function TransactionsPage() {
   const memberMap = Object.fromEntries(members.map((m) => [m.id, m]));
   const psMap = Object.fromEntries(paymentSources.map((ps) => [ps.id, ps]));
 
+  function applyFilter(f: TransactionFilter) {
+    const params = new URLSearchParams();
+    // month는 현재 선택된 달을 유지
+    const currentMonth = searchParams.get("month");
+    if (currentMonth) params.set("month", currentMonth);
+    if (f.types.length > 0) params.set("types", f.types.join(","));
+    if (f.middleCategoryId) params.set("middleCategoryId", f.middleCategoryId);
+    if (f.subCategoryId) params.set("subCategoryId", f.subCategoryId);
+    if (f.evaluations.length > 0)
+      params.set("evaluations", f.evaluations.join(","));
+    if (f.dateFrom) params.set("dateFrom", f.dateFrom);
+    if (f.dateTo) params.set("dateTo", f.dateTo);
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
+  }
+
+  // 활성 필터 칩 목록
+  const filterChips: { key: string; label: string; onRemove: () => void }[] =
+    [];
+  if (filter.types.length > 0) {
+    filterChips.push({
+      key: "types",
+      label: filter.types.map((t) => TYPE_LABELS[t]).join(", "),
+      onRemove: () => applyFilter({ ...filter, types: [] }),
+    });
+  }
+  if (filter.middleCategoryId) {
+    const cat = categories.find((c) => c.id === filter.middleCategoryId);
+    filterChips.push({
+      key: "middleCategoryId",
+      label: cat?.name ?? "중분류",
+      onRemove: () =>
+        applyFilter({ ...filter, middleCategoryId: "", subCategoryId: "" }),
+    });
+  }
+  if (filter.subCategoryId) {
+    const cat = categories.find((c) => c.id === filter.subCategoryId);
+    filterChips.push({
+      key: "subCategoryId",
+      label: cat?.name ?? "소분류",
+      onRemove: () => applyFilter({ ...filter, subCategoryId: "" }),
+    });
+  }
+  if (filter.evaluations.length > 0) {
+    filterChips.push({
+      key: "evaluations",
+      label: filter.evaluations.map((e) => EVALUATION_LABELS[e]).join(", "),
+      onRemove: () => applyFilter({ ...filter, evaluations: [] }),
+    });
+  }
+  if (filter.dateFrom || filter.dateTo) {
+    filterChips.push({
+      key: "date",
+      label: `${filter.dateFrom || "처음"} ~ ${filter.dateTo || "현재"}`,
+      onRemove: () => applyFilter({ ...filter, dateFrom: "", dateTo: "" }),
+    });
+  }
+
+  const activeFilterCount = filterChips.length;
+
+  // 필터 적용 (클라이언트 사이드)
+  const filteredTransactions = useMemo(() => {
+    let result = transactions;
+    if (filter.types.length > 0)
+      result = result.filter((t) => filter.types.includes(t.type));
+    if (filter.middleCategoryId)
+      result = result.filter(
+        (t) =>
+          findMiddleCategory(t.category_id, categories)?.id ===
+          filter.middleCategoryId,
+      );
+    if (filter.subCategoryId)
+      result = result.filter((t) => t.category_id === filter.subCategoryId);
+    if (filter.evaluations.length > 0)
+      result = result.filter(
+        (t) => t.evaluation && filter.evaluations.includes(t.evaluation),
+      );
+    if (filter.dateFrom)
+      result = result.filter((t) => t.date >= filter.dateFrom);
+    if (filter.dateTo) result = result.filter((t) => t.date <= filter.dateTo);
+    return result;
+  }, [transactions, filter, categories]);
+
   // 날짜별 그룹
-  const grouped = transactions.reduce<Record<string, Transaction[]>>(
+  const grouped = filteredTransactions.reduce<Record<string, Transaction[]>>(
     (acc, t) => {
       (acc[t.date] ??= []).push(t);
       return acc;
@@ -110,45 +231,103 @@ export default function TransactionsPage() {
     return path[0]?.name ?? "알 수 없음";
   }
 
-  /** 카테고리 아이콘 (가장 구체적인 레벨) */
+  /** 카테고리 아이콘 (중분류 기준) */
   function getCatDisplay(t: Transaction) {
     const cat = catMap[t.category_id];
     const path = getCategoryPath(t.category_id, categories);
-    // 중분류의 아이콘/색상 사용 (더 의미있음)
     const middleCat = path.length >= 2 ? path[1] : cat;
     return middleCat ?? cat;
   }
 
+  const isFiltered = activeFilterCount > 0;
+
+  // 필터 적용 시 요약 수치를 filteredTransactions 기준으로 재계산
+  const displaySummary = useMemo(() => {
+    if (!isFiltered) return summary ?? null;
+    let income = 0,
+      expense = 0,
+      savings = 0;
+    for (const t of filteredTransactions) {
+      if (t.type === "income") income += t.amount;
+      else if (t.type === "expense") expense += t.amount;
+      else if (t.type === "savings") savings += t.amount;
+    }
+    return { income, expense, savings };
+  }, [isFiltered, filteredTransactions, summary]);
+
   return (
     <div className="flex flex-col h-full">
-      <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+      <div className="flex items-center gap-2 px-4 md:px-6">
+        <div className="flex-1">
+          <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+        </div>
+        <div className="relative shrink-0 pb-2">
+          <button
+            onClick={() => setShowFilter(true)}
+            className={`flex items-center justify-center w-9 h-9 rounded-full border transition-colors ${
+              isFiltered
+                ? "bg-teal-400 border-teal-400 text-white"
+                : "bg-white border-gray-200 text-gray-500"
+            }`}
+          >
+            <SlidersHorizontal size={16} />
+          </button>
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* 활성 필터 칩 */}
+      {filterChips.length > 0 && (
+        <div className="flex gap-1.5 px-4 py-2 overflow-x-auto md:px-6">
+          {filterChips.map((chip) => (
+            <span
+              key={chip.key}
+              className="flex items-center gap-1 shrink-0 bg-teal-50 text-teal-700 text-xs font-medium px-2.5 py-1 rounded-full border border-teal-200"
+            >
+              {chip.label}
+              <button
+                onClick={chip.onRemove}
+                className="ml-0.5 text-teal-400 hover:text-teal-600"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 월 요약 카드 */}
-      {summary && (
-        <div className="mx-4 mt-3 p-3 rounded-2xl bg-teal-400 text-white grid grid-cols-4 gap-1 md:mx-6 md:p-4">
+      {displaySummary && (
+        <div className="mx-4 mt-1 p-3 rounded-2xl bg-teal-400 text-white grid grid-cols-4 gap-1 md:mx-6 md:p-4">
           <div className="text-center">
             <p className="text-xs opacity-80">수입</p>
             <p className="font-bold text-xs">
-              {formatCurrency(summary.income)}
+              {formatCurrency(displaySummary.income)}
             </p>
           </div>
           <div className="text-center">
             <p className="text-xs opacity-80">저축</p>
             <p className="font-bold text-xs">
-              {formatCurrency(summary.savings)}
+              {formatCurrency(displaySummary.savings)}
             </p>
           </div>
           <div className="text-center">
             <p className="text-xs opacity-80">지출</p>
             <p className="font-bold text-xs">
-              {formatCurrency(summary.expense)}
+              {formatCurrency(displaySummary.expense)}
             </p>
           </div>
           <div className="text-center">
             <p className="text-xs opacity-80">잔액</p>
             <p className="font-bold text-xs">
               {formatCurrency(
-                summary.income - summary.expense - summary.savings,
+                displaySummary.income -
+                  displaySummary.expense -
+                  displaySummary.savings,
               )}
             </p>
           </div>
@@ -157,12 +336,17 @@ export default function TransactionsPage() {
 
       {/* 거래 목록 */}
       <div className="flex-1 overflow-y-auto mt-3 pb-2">
-        {transactions.length === 0 ? (
+        {isFiltered && (
+          <p className="px-4 pb-1.5 text-xs text-gray-400 md:px-6">
+            {filteredTransactions.length}건
+          </p>
+        )}
+        {filteredTransactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-500 text-sm">
             <span className="material-symbols-outlined text-4xl mb-2">
               receipt_long
             </span>
-            내역이 없습니다
+            {isFiltered ? "조건에 맞는 내역이 없습니다" : "내역이 없습니다"}
           </div>
         ) : (
           sortedDates.map((date) => (
@@ -198,6 +382,7 @@ export default function TransactionsPage() {
                           <span className="text-[10px] font-semibold">
                             저축
                           </span>
+                          {savings < 0 ? "-" : ""}
                           {formatCurrency(Math.abs(savings))}
                         </span>
                       )}
@@ -311,6 +496,23 @@ export default function TransactionsPage() {
           }}
         />
       )}
+
+      {showFilter && (
+        <TransactionFilterPanel
+          onClose={() => setShowFilter(false)}
+          categories={categories}
+          currentFilter={filter}
+          onApply={applyFilter}
+        />
+      )}
     </div>
+  );
+}
+
+export default function TransactionsPage() {
+  return (
+    <Suspense>
+      <TransactionsPageInner />
+    </Suspense>
   );
 }
