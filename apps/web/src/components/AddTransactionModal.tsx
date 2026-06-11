@@ -26,6 +26,12 @@ import {
   getChildCategories,
   getCategoryPath,
 } from "@/src/lib/utils/categoryUtils";
+import {
+  getRecentCategoryIds,
+  pushRecentCategoryId,
+  pushToMru,
+  RECENT_CATEGORIES_MAX,
+} from "@/src/lib/utils/recentCategories";
 
 interface AddTransactionModalProps {
   familyId: string;
@@ -65,7 +71,18 @@ export function AddTransactionModal({
     [categories],
   );
 
-  const [majorCatId, setMajorCatId] = useState(editPath?.[0]?.id ?? "");
+  // 신규 모드 기본 대분류는 '지출' — categories가 늦게 도착해도 동작하도록 파생값으로 처리
+  const defaultMajorCatId = useMemo(
+    () =>
+      majorCategories.find((c) => MAJOR_CATEGORY_TYPE_MAP[c.name] === "expense")
+        ?.id ?? "",
+    [majorCategories],
+  );
+
+  const [selectedMajorCatId, setSelectedMajorCatId] = useState(
+    editPath?.[0]?.id ?? "",
+  );
+  const majorCatId = selectedMajorCatId || (isEdit ? "" : defaultMajorCatId);
   const [middleCatId, setMiddleCatId] = useState(editPath?.[1]?.id ?? "");
   const [subCatId, setSubCatId] = useState(editPath?.[2]?.id ?? "");
   const [amount, setAmount] = useState(
@@ -99,6 +116,11 @@ export function AddTransactionModal({
   const [savedCount, setSavedCount] = useState(0);
   const amountRef = useRef<HTMLInputElement>(null);
 
+  // 최근 사용 카테고리 (신규 모드 전용 — 모달은 클릭 후 마운트되므로 lazy 초기화로 충분)
+  const [recentIds, setRecentIds] = useState(() =>
+    isEdit ? [] : getRecentCategoryIds(familyId),
+  );
+
   // 거래출처 조회
   const { data: paymentSources = [] } = useQuery({
     queryKey: ["paymentSources", familyId],
@@ -114,6 +136,16 @@ export function AddTransactionModal({
   const subCategories = useMemo(
     () => (middleCatId ? getChildCategories(categories, middleCatId) : []),
     [categories, middleCatId],
+  );
+
+  // 최근 사용 카테고리 경로 복원 (삭제된 카테고리는 경로가 깨져 자동 제외)
+  const recentPaths = useMemo(
+    () =>
+      recentIds
+        .map((id) => getCategoryPath(id, categories))
+        .filter((path) => path.length >= 2)
+        .slice(0, 5),
+    [recentIds, categories],
   );
 
   const selectedMajor = majorCategories.find((c) => c.id === majorCatId);
@@ -135,6 +167,20 @@ export function AddTransactionModal({
     setEvaluation("");
     setSavingsDirection("in");
   }, []);
+
+  const applyRecentPath = useCallback(
+    (path: Category[]) => {
+      if (path[0].id !== majorCatId) {
+        setEvaluation("");
+        setSavingsDirection("in");
+      }
+      setSelectedMajorCatId(path[0].id);
+      setMiddleCatId(path[1]?.id ?? "");
+      setSubCatId(path[2]?.id ?? "");
+      setTimeout(() => amountRef.current?.focus(), 0);
+    },
+    [majorCatId],
+  );
 
   const parsedAmount = parseInt(amount.replace(/,/g, ""), 10);
   const signedAmount =
@@ -162,7 +208,11 @@ export function AddTransactionModal({
         evaluation:
           isExpense && evaluation ? (evaluation as EvaluationType) : undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (created) => {
+      pushRecentCategoryId(familyId, created.category_id);
+      setRecentIds((prev) =>
+        pushToMru(prev, created.category_id, RECENT_CATEGORIES_MAX),
+      );
       invalidateQueries();
       setSavedCount((c) => c + 1);
       resetForm();
@@ -237,6 +287,35 @@ export function AddTransactionModal({
             </button>
           </div>
 
+          {/* 최근 사용 카테고리 바로가기 (신규 모드 전용) */}
+          {!isEdit && recentPaths.length > 0 && (
+            <div>
+              <label className="text-xs text-gray-600 mb-1.5 block">
+                최근 사용
+              </label>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {recentPaths.map((path) => {
+                  const middle = path[1];
+                  const sub = path[2];
+                  return (
+                    <button
+                      key={(sub ?? middle).id}
+                      onClick={() => applyRecentPath(path)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-sm text-gray-600 whitespace-nowrap shrink-0 transition-colors"
+                    >
+                      <CategoryIcon
+                        icon={middle.icon}
+                        color={middle.color}
+                        size="sm"
+                      />
+                      {sub ? `${middle.name} > ${sub.name}` : middle.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* 대분류 선택 (수입/저축/지출) */}
           <div className="flex rounded-xl overflow-hidden border border-gray-200">
             {majorCategories.map((mc) => (
@@ -244,7 +323,7 @@ export function AddTransactionModal({
                 key={mc.id}
                 onClick={() => {
                   if (majorCatId === mc.id) return;
-                  setMajorCatId(mc.id);
+                  setSelectedMajorCatId(mc.id);
                   setMiddleCatId("");
                   setSubCatId("");
                   setEvaluation("");
