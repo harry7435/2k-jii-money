@@ -19,7 +19,10 @@ import {
   formatDate,
   formatTime,
 } from "@/src/lib/utils/formatters";
-import { EVALUATION_LABELS } from "@/src/lib/constants/categories";
+import {
+  EVALUATION_LABELS,
+  TRANSACTION_TYPE_LABELS,
+} from "@/src/lib/constants/categories";
 import {
   getCategoryPath,
   findMiddleCategory,
@@ -32,12 +35,6 @@ import {
   type TransactionFilter,
 } from "@/src/components/transactions/TransactionFilterPanel";
 import type { Transaction } from "@2k-jii-money/supabase-types";
-
-const TYPE_LABELS: Record<string, string> = {
-  income: "수입",
-  expense: "지출",
-  savings: "저축",
-};
 
 function parseFilter(
   searchParams: ReturnType<typeof useSearchParams>,
@@ -140,7 +137,7 @@ function TransactionsPageInner() {
   if (filter.types.length > 0) {
     filterChips.push({
       key: "types",
-      label: filter.types.map((t) => TYPE_LABELS[t]).join(", "),
+      label: filter.types.map((t) => TRANSACTION_TYPE_LABELS[t]).join(", "),
       onRemove: () => applyFilter({ ...filter, types: [] }),
     });
   }
