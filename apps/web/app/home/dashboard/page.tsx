@@ -24,6 +24,8 @@ import {
   getCurrentYearMonth,
   formatCurrency,
   formatYearMonth,
+  prevMonth,
+  calcDelta,
 } from "@/src/lib/utils/formatters";
 import { findMiddleCategory } from "@/src/lib/utils/categoryUtils";
 import { MonthSelector } from "@/src/components/MonthSelector";
@@ -32,6 +34,36 @@ import { SummarySection } from "@/src/components/dashboard/SummarySection";
 import { ExpenseByMiddleCategory } from "@/src/components/dashboard/ExpenseByMiddleCategory";
 import { FixedVsVariableExpense } from "@/src/components/dashboard/FixedVsVariableExpense";
 import { EvaluationReport } from "@/src/components/dashboard/EvaluationReport";
+
+// 전월 대비 증감 한 줄. 전월 기록이 없으면(0) 표시하지 않음.
+// 색상 의미론: 지출은 증가가 나쁨(빨강), 수입·저축은 증가가 좋음(파랑)
+function DeltaLine({
+  current,
+  prev,
+  positiveIsGood,
+}: {
+  current: number;
+  prev: number;
+  positiveIsGood: boolean;
+}) {
+  if (prev === 0) return null;
+  const { diff, pct } = calcDelta(current, prev);
+  if (diff === 0) {
+    return <p className="text-[10px] text-gray-400 mt-0.5">전월과 동일</p>;
+  }
+  const up = diff > 0;
+  const good = up === positiveIsGood;
+  return (
+    <p
+      className={`text-[10px] font-semibold mt-0.5 ${
+        good ? "text-blue-500" : "text-red-500"
+      }`}
+    >
+      {up ? "▲" : "▼"} {Math.abs(diff).toLocaleString("ko-KR")}
+      {pct !== null && ` (${up ? "+" : "-"}${Math.abs(pct)}%)`}
+    </p>
+  );
+}
 
 export default function DashboardPage() {
   const { family } = useFamilyStore();
@@ -53,6 +85,13 @@ export default function DashboardPage() {
   const { data: summary } = useQuery({
     queryKey: ["summary", familyId, yearMonth],
     queryFn: () => getMonthlySummary(familyId, yearMonth),
+    enabled: !!familyId,
+  });
+
+  const prevYearMonth = prevMonth(yearMonth);
+  const { data: prevSummary } = useQuery({
+    queryKey: ["summary", familyId, prevYearMonth],
+    queryFn: () => getMonthlySummary(familyId, prevYearMonth),
     enabled: !!familyId,
   });
 
@@ -126,18 +165,39 @@ export default function DashboardPage() {
               <p className="text-sm font-bold text-blue-600 mt-1">
                 {formatCurrency(summary.income)}
               </p>
+              {prevSummary && (
+                <DeltaLine
+                  current={summary.income}
+                  prev={prevSummary.income}
+                  positiveIsGood
+                />
+              )}
             </div>
             <div className="bg-teal-50 rounded-2xl p-3">
               <p className="text-xs text-teal-400 font-semibold">저축</p>
               <p className="text-sm font-bold text-teal-600 mt-1">
                 {formatCurrency(summary.savings)}
               </p>
+              {prevSummary && (
+                <DeltaLine
+                  current={summary.savings}
+                  prev={prevSummary.savings}
+                  positiveIsGood
+                />
+              )}
             </div>
             <div className="bg-red-50 rounded-2xl p-3">
               <p className="text-xs text-red-400 font-semibold">지출</p>
               <p className="text-sm font-bold text-red-500 mt-1">
                 {formatCurrency(summary.expense)}
               </p>
+              {prevSummary && (
+                <DeltaLine
+                  current={summary.expense}
+                  prev={prevSummary.expense}
+                  positiveIsGood={false}
+                />
+              )}
             </div>
           </div>
         )}
