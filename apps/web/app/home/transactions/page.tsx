@@ -17,8 +17,10 @@ import {
   getCurrentYearMonth,
   formatCurrency,
   formatDate,
-  formatTime,
+  formatTimeLabel,
+  transactionTimeKey,
 } from "@/src/lib/utils/formatters";
+import { useUIPrefsStore } from "@/src/lib/store/uiPrefsStore";
 import {
   EVALUATION_LABELS,
   TRANSACTION_TYPE_LABELS,
@@ -53,6 +55,8 @@ function parseFilter(
 
 function TransactionsPageInner() {
   const { family, member } = useFamilyStore();
+  const timeFormat = useUIPrefsStore((s) => s.timeFormat);
+  const toggleTimeFormat = useUIPrefsStore((s) => s.toggleTimeFormat);
   const qc = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -208,6 +212,17 @@ function TransactionsPageInner() {
   );
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
+  // 각 날짜 그룹을 시간(입력 time > created_at 폴백) 내림차순 정렬
+  for (const date of sortedDates) {
+    grouped[date].sort((a, b) => {
+      const ka = transactionTimeKey(a) ?? "";
+      const kb = transactionTimeKey(b) ?? "";
+      if (ka !== kb) return kb.localeCompare(ka);
+      // 동일 시간이면 created_at 최신순
+      return (b.created_at ?? "").localeCompare(a.created_at ?? "");
+    });
+  }
+
   function getDailyTotals(txs: Transaction[]) {
     let income = 0;
     let expense = 0;
@@ -258,6 +273,13 @@ function TransactionsPageInner() {
         <div className="flex-1">
           <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
         </div>
+        <button
+          onClick={toggleTimeFormat}
+          className="shrink-0 pb-2 mr-1 text-xs font-medium text-gray-500 hover:text-gray-700"
+          title="시간 표시 형식 전환"
+        >
+          {timeFormat === "24h" ? "24시" : "오전·오후"}
+        </button>
         <div className="relative shrink-0 pb-2">
           <button
             onClick={() => setShowFilter(true)}
@@ -419,9 +441,12 @@ function TransactionsPageInner() {
                         {ps && ` · ${ps.name}`}
                         {t.evaluation &&
                           ` · ${EVALUATION_LABELS[t.evaluation]}`}
-                        {t.time
-                          ? ` · ${t.time}`
-                          : t.created_at && ` · ${formatTime(t.created_at)}`}
+                        {(() => {
+                          const key = transactionTimeKey(t);
+                          return key
+                            ? ` · ${formatTimeLabel(key, timeFormat)}`
+                            : "";
+                        })()}
                       </p>
                     </div>
                     <div className="text-right flex items-center gap-2">
