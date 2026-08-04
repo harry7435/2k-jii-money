@@ -19,6 +19,7 @@ import { MonthlyTotalsChart } from "@/src/components/trend/MonthlyTotalsChart";
 import { MonthlyByCategoryChart } from "@/src/components/trend/MonthlyByCategoryChart";
 import { MonthlyEvaluationChart } from "@/src/components/trend/MonthlyEvaluationChart";
 import { CategorySelector } from "@/src/components/trend/CategorySelector";
+import { TrendSkeleton } from "@/src/components/skeletons/TrendSkeleton";
 
 const MONTHS = 12;
 const DEFAULT_TOP_N = 5;
@@ -74,6 +75,27 @@ export default function TrendPage() {
 
   const hasData = transactions.length > 0;
 
+  if (txLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <header className="flex items-center gap-2 px-3 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
+          <Link
+            href="/home/dashboard"
+            aria-label="뒤로가기"
+            className="w-9 h-9 flex items-center justify-center rounded-full active:bg-gray-100"
+          >
+            <span className="material-symbols-outlined">chevron_left</span>
+          </Link>
+          <h1 className="text-base font-bold">월별 추이</h1>
+          <span className="ml-auto text-xs text-gray-400">최근 12개월</span>
+        </header>
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          <TrendSkeleton />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       <header className="flex items-center gap-2 px-3 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
@@ -89,7 +111,7 @@ export default function TrendPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 md:p-6">
-        {!hasData && !txLoading ? (
+        {!hasData ? (
           <div className="bg-white rounded-2xl p-8 text-center text-gray-400">
             <span className="material-symbols-outlined text-4xl">
               query_stats
