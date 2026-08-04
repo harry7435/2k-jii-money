@@ -34,6 +34,7 @@ import { SummarySection } from "@/src/components/dashboard/SummarySection";
 import { ExpenseByMiddleCategory } from "@/src/components/dashboard/ExpenseByMiddleCategory";
 import { FixedVsVariableExpense } from "@/src/components/dashboard/FixedVsVariableExpense";
 import { EvaluationReport } from "@/src/components/dashboard/EvaluationReport";
+import { DashboardSkeleton } from "@/src/components/skeletons/DashboardSkeleton";
 
 // 전월 대비 증감 한 줄. 전월 기록이 없으면(0) 표시하지 않음.
 // 색상 의미론: 지출은 증가가 나쁨(빨강), 수입·저축은 증가가 좋음(파랑)
@@ -70,19 +71,19 @@ export default function DashboardPage() {
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
   const familyId = family?.id ?? "";
 
-  const { data: transactions = [] } = useQuery({
+  const { data: transactions = [], isLoading: txLoading } = useQuery({
     queryKey: ["transactions", familyId, yearMonth],
     queryFn: () => getTransactions(familyId, yearMonth),
     enabled: !!familyId,
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isLoading: catLoading } = useQuery({
     queryKey: ["categories", familyId],
     queryFn: () => getCategories(familyId),
     enabled: !!familyId,
   });
 
-  const { data: summary } = useQuery({
+  const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["summary", familyId, yearMonth],
     queryFn: () => getMonthlySummary(familyId, yearMonth),
     enabled: !!familyId,
@@ -94,6 +95,19 @@ export default function DashboardPage() {
     queryFn: () => getMonthlySummary(familyId, prevYearMonth),
     enabled: !!familyId,
   });
+
+  const isLoading = txLoading || catLoading || summaryLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          <DashboardSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   // 중분류별 지출 (파이 차트)
   const expensesByMiddle = transactions
