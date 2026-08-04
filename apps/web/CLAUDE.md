@@ -38,6 +38,7 @@ apps/web/
 │   ├── components/             # 공통 컴포넌트
 │   │   ├── AddTransactionModal.tsx
 │   │   ├── DateTimePicker.tsx
+│   │   ├── ClockDial.tsx       # DateTimePicker의 시간 선택 다이얼 (탭 12칸 + 직접 입력)
 │   │   ├── SetBudgetModal.tsx
 │   │   ├── BudgetProgressBar.tsx
 │   │   ├── CategoryIcon.tsx
@@ -56,6 +57,7 @@ apps/web/
 │       ├── utils/
 │       │   ├── formatters.ts
 │       │   ├── categoryUtils.ts  # getCategoriesByLevel, getChildCategories, getCategoryPath
+│       │   ├── timeUtils.ts      # HH:mm ↔ 12시간제 변환, 다이얼 좌표 계산 (순수 함수)
 │       │   └── trendUtils.ts     # 월별 집계 (buildMonthList, aggregateMonthly*)
 │       └── constants/
 │           └── categories.ts   # DEFAULT_CATEGORY_TREE, DEFAULT_PAYMENT_SOURCES, MAJOR_CATEGORY_TYPE_MAP

@@ -30,8 +30,23 @@
 ### DateTimePicker (`src/components/DateTimePicker.tsx`)
 
 - Props: `date: string` (yyyy-MM-dd), `time: string` (HH:mm | ''), `onDateChange`, `onTimeChange`
-- 트리거 버튼 + createPortal 캘린더 조합
+- 트리거 버튼 + createPortal 팝업(날짜 캘린더 / 시간 다이얼) 조합
 - date-fns로 달력 직접 구현 (react-day-picker 미사용)
+- 팝업 내부는 상단 칩(`날짜` / `시간`)으로 뷰 전환 — `view: 'date' | 'time'` 상태
+  - 날짜 칩: 선택된 날짜(`M월 d일 (EEE)`) 또는 "날짜 선택"
+  - 시간 칩: 선택된 시간(`HH:mm`) 또는 "--:--"
+- 네이티브 `<input type="time">` 사용 금지 — 브라우저별 3열 휠 UI가 일관되지 않아 `ClockDial`로 대체됨
+- 날짜만 선택하고 시간을 비워둔 상태를 그대로 유지 — 과거처럼 날짜 선택 시 빈 시간을 `00:00`으로 자동 채우지 않음
+
+### ClockDial (`src/components/ClockDial.tsx`, `src/lib/utils/timeUtils.ts`)
+
+시간 선택용 12칸 시계 다이얼 + 키보드 직접 입력 콤보. 값은 항상 `HH:mm`(24시) 문자열.
+
+- **2단계 구성**: 시 다이얼 → 분 다이얼(5분 단위, 0·5·10…55). 별도 모드 토글 버튼 없이, 상단 시각 입력칸(시 또는 분)에 포커스가 가는 것 자체가 단계 전환
+- **상단 입력칸이 곧 텍스트 입력**: 다이얼로 고르는 대신 키보드로 직접 타이핑 가능. 다이얼은 5분 단위 스냅이지만 타이핑은 1분 단위까지 허용 (`type()` / `setHour24` / `setMinute`)
+- **표시 형식은 화면 설정과 무관하게 항상 24시** — `uiPrefsStore.timeFormat`(12h/24h 토글)은 거래 목록 등 다른 화면에는 영향을 주지만, 이 피커 내부 표시는 고정 24시. 다이얼 자체는 12시간 슬롯(1~12) + 오전/오후 토글로 동작하고, `to24h`/`from24h`로 24시 문자열과 상호 변환
+- **5분 배수가 아닌 값의 시각화**: 예) `13:53`처럼 다이얼 눈금에 정확히 맞지 않는 값은 바늘이 실제 각도를 그대로 가리키고, 라벨이 있는 칸이 아니면 작은 점(반지름 6)으로 표시. 라벨 위에 정확히 걸릴 때만 큰 원(반지름 `MARKER_RADIUS`)으로 숫자를 덮음 — 큰 마커는 "스냅된 값"처럼 보이기 때문에 구분함
+- **순수 함수는 `timeUtils.ts`로 분리**: `to24h`, `from24h`, `setHour`, `setHour24`, `setMinute`, `dialPoint`, `hourAtSlot`, `minuteAtSlot` — DOM 의존 없이 단위 테스트(`timeUtils.test.ts`)로 커버. 다이얼/입력 관련 로직을 건드릴 때는 여기부터 확인
 
 ### blur 자동저장 + 취소 버튼 충돌 방지
 
