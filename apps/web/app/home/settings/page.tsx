@@ -31,6 +31,7 @@ import {
   getChildCategories,
 } from "@/src/lib/utils/categoryUtils";
 import { DEFAULT_CATEGORY_TREE } from "@/src/lib/constants/categories";
+import { SettingsSkeleton } from "@/src/components/skeletons/SettingsSkeleton";
 import type { PaymentSource } from "@2k-jii-money/supabase-types";
 
 export default function SettingsPage() {
@@ -54,23 +55,24 @@ export default function SettingsPage() {
 
   const familyId = family?.id ?? "";
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isLoading: catLoading } = useQuery({
     queryKey: ["categories", familyId],
     queryFn: () => getCategories(familyId),
     enabled: !!familyId,
   });
 
-  const { data: members = [] } = useQuery({
+  const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ["members", familyId],
     queryFn: () => getMembers(familyId),
     enabled: !!familyId,
   });
 
-  const { data: paymentSources = [] } = useQuery({
-    queryKey: ["paymentSources", familyId],
-    queryFn: () => getPaymentSources(familyId),
-    enabled: !!familyId,
-  });
+  const { data: paymentSources = [], isLoading: paymentSourcesLoading } =
+    useQuery({
+      queryKey: ["paymentSources", familyId],
+      queryFn: () => getPaymentSources(familyId),
+      enabled: !!familyId,
+    });
 
   const deleteCatMutation = useMutation({
     mutationFn: deleteCategory,
@@ -155,7 +157,10 @@ export default function SettingsPage() {
     router.replace("/welcome");
   }
 
+  const isLoading = catLoading || membersLoading || paymentSourcesLoading;
+
   if (!family || !member) return null;
+  if (isLoading) return <SettingsSkeleton />;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
