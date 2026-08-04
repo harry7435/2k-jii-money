@@ -24,6 +24,7 @@ import {
   ASSET_ACCOUNT_TYPE_MAP,
   ASSET_TYPE_ORDER,
 } from "@/src/lib/constants/assets";
+import { AssetsSkeleton } from "@/src/components/skeletons/AssetsSkeleton";
 import type { AssetAccount } from "@2k-jii-money/supabase-types";
 
 export default function AssetsPage() {
@@ -36,19 +37,23 @@ export default function AssetsPage() {
     null,
   );
 
-  const { data: accounts = [], isSuccess: accountsLoaded } = useQuery({
+  const {
+    data: accounts = [],
+    isSuccess: accountsLoaded,
+    isLoading: accountsLoading,
+  } = useQuery({
     queryKey: ["assetAccounts", familyId],
     queryFn: () => getAssetAccounts(familyId),
     enabled: !!familyId,
   });
 
-  const { data: snapshots = [] } = useQuery({
+  const { data: snapshots = [], isLoading: snapshotsLoading } = useQuery({
     queryKey: ["assetSnapshots", familyId, yearMonth],
     queryFn: () => getAssetSnapshots(familyId, yearMonth),
     enabled: !!familyId,
   });
 
-  const { data: history = [] } = useQuery({
+  const { data: history = [], isLoading: historyLoading } = useQuery({
     queryKey: ["assetSnapshotHistory", familyId],
     queryFn: () => getAssetSnapshotHistory(familyId, 12),
     enabled: !!familyId,
@@ -90,6 +95,19 @@ export default function AssetsPage() {
       qc.invalidateQueries({ queryKey: ["assetSnapshotHistory", familyId] });
     },
   });
+
+  const isLoading = accountsLoading || snapshotsLoading || historyLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="p-4 space-y-4">
+          <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+          <AssetsSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   // 스냅샷 맵: account_id → amount
   const snapshotMap = new Map(snapshots.map((s) => [s.account_id, s.amount]));
