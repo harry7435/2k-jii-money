@@ -17,6 +17,7 @@ import { MonthSelector } from "@/src/components/MonthSelector";
 import { SetBudgetModal } from "@/src/components/SetBudgetModal";
 import { CategoryIcon } from "@/src/components/CategoryIcon";
 import { findMiddleCategory } from "@/src/lib/utils/categoryUtils";
+import { BudgetSkeleton } from "@/src/components/skeletons/BudgetSkeleton";
 
 export default function BudgetPage() {
   const { family } = useFamilyStore();
@@ -24,23 +25,34 @@ export default function BudgetPage() {
   const [showTotalModal, setShowTotalModal] = useState(false);
   const familyId = family?.id ?? "";
 
-  const { data: budgets = [] } = useQuery({
+  const { data: budgets = [], isLoading: budgetsLoading } = useQuery({
     queryKey: ["budgets", familyId, yearMonth],
     queryFn: () => getBudgets(familyId, yearMonth),
     enabled: !!familyId,
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isLoading: catLoading } = useQuery({
     queryKey: ["categories", familyId],
     queryFn: () => getCategories(familyId),
     enabled: !!familyId,
   });
 
-  const { data: transactions = [] } = useQuery({
+  const { data: transactions = [], isLoading: txLoading } = useQuery({
     queryKey: ["transactions", familyId, yearMonth],
     queryFn: () => getTransactions(familyId, yearMonth),
     enabled: !!familyId,
   });
+
+  const isLoading = budgetsLoading || catLoading || txLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+        <BudgetSkeleton />
+      </div>
+    );
+  }
 
   // 총 예산 (category_id = null)
   const totalBudgetRow = budgets.find((b) => b.category_id === null);
