@@ -36,6 +36,7 @@ import {
   TransactionFilterPanel,
   type TransactionFilter,
 } from "@/src/components/transactions/TransactionFilterPanel";
+import { TransactionsSkeleton } from "@/src/components/skeletons/TransactionsSkeleton";
 import type { Transaction } from "@2k-jii-money/supabase-types";
 
 function parseFilter(
@@ -74,29 +75,30 @@ function TransactionsPageInner() {
 
   const familyId = family?.id ?? "";
 
-  const { data: transactions = [] } = useQuery({
+  const { data: transactions = [], isLoading: txLoading } = useQuery({
     queryKey: ["transactions", familyId, yearMonth],
     queryFn: () => getTransactions(familyId, yearMonth),
     enabled: !!familyId,
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isLoading: catLoading } = useQuery({
     queryKey: ["categories", familyId],
     queryFn: () => getCategories(familyId),
     enabled: !!familyId,
   });
 
-  const { data: members = [] } = useQuery({
+  const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ["members", familyId],
     queryFn: () => getMembers(familyId),
     enabled: !!familyId,
   });
 
-  const { data: paymentSources = [] } = useQuery({
-    queryKey: ["paymentSources", familyId],
-    queryFn: () => getPaymentSources(familyId),
-    enabled: !!familyId,
-  });
+  const { data: paymentSources = [], isLoading: paymentSourcesLoading } =
+    useQuery({
+      queryKey: ["paymentSources", familyId],
+      queryFn: () => getPaymentSources(familyId),
+      enabled: !!familyId,
+    });
 
   const { data: summary } = useQuery({
     queryKey: ["summary", familyId, yearMonth],
@@ -266,6 +268,29 @@ function TransactionsPageInner() {
     }
     return { income, expense, savings };
   }, [isFiltered, filteredTransactions, summary]);
+
+  const isLoading =
+    txLoading || catLoading || membersLoading || paymentSourcesLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center gap-2 px-4 md:px-6">
+          <div className="flex-1">
+            <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+          </div>
+          <button
+            onClick={toggleTimeFormat}
+            className="shrink-0 pb-2 mr-1 text-xs font-medium text-gray-500 hover:text-gray-700"
+            title="시간 표시 형식 전환"
+          >
+            {timeFormat === "24h" ? "24시" : "오전·오후"}
+          </button>
+        </div>
+        <TransactionsSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
