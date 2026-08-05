@@ -200,21 +200,30 @@ export async function getCurrentMembership(): Promise<{
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // 에러를 삼키면 안 된다. RLS나 GRANT가 잘못됐을 때 "가족 없음"과 구분이 안 되고,
+  // 화면에는 아무것도 안 뜨는데 콘솔도 조용해서 원인을 찾을 수가 없다.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: member } = await (supabase as any)
+  const { data: member, error: memberError } = await (supabase as any)
     .from("members")
     .select()
     .eq("user_id", user.id)
     .maybeSingle();
+  if (memberError) throw memberError;
   if (!member) return null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: family } = await (supabase as any)
+  const { data: family, error: familyError } = await (supabase as any)
     .from("families")
     .select()
     .eq("id", member.family_id)
     .maybeSingle();
-  if (!family) return null;
+  if (familyError) throw familyError;
+  if (!family) {
+    // 멤버 행은 보이는데 가족이 안 보인다 = families SELECT 정책이나 GRANT 문제.
+    throw new Error(
+      `멤버는 조회됐지만 가족(${member.family_id})을 읽을 수 없습니다. families RLS 정책을 확인하세요.`,
+    );
+  }
 
   return { family: family as Family, member: member as Member };
 }

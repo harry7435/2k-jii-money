@@ -25,9 +25,13 @@ export default function HomeLayout({
   const setFamily = useFamilyStore((s) => s.setFamily);
   const setMember = useFamilyStore((s) => s.setMember);
 
-  // 진실의 원천은 서버다. 미로그인·무소속 상태는 middleware가 이미 걸러내므로
+  // 진실의 원천은 서버다. 미로그인·무소속 상태는 proxy.ts가 이미 걸러내므로
   // 여기서는 리다이렉트하지 않고 store를 채우기만 한다.
-  const { data: membership } = useQuery({
+  const {
+    data: membership,
+    isPending,
+    error,
+  } = useQuery({
     queryKey: ["membership"],
     queryFn: getCurrentMembership,
     staleTime: Infinity,
@@ -39,6 +43,33 @@ export default function HomeLayout({
       setMember(membership.member);
     }
   }, [membership, setFamily, setMember]);
+
+  // 아래 세 분기는 전부 "아무것도 안 뜨는 화면"을 막기 위한 것이다.
+  // 예전에는 조회가 실패해도 null을 반환해 원인 없이 검은 화면만 남았다.
+  if (error) {
+    return (
+      <StatusScreen
+        title="가계부를 불러오지 못했습니다"
+        detail={error instanceof Error ? error.message : String(error)}
+      />
+    );
+  }
+
+  if (isPending) {
+    return (
+      <StatusScreen title="불러오는 중..." detail="잠시만 기다려 주세요." />
+    );
+  }
+
+  if (!membership) {
+    return (
+      <StatusScreen
+        title="아직 가족에 속해 있지 않습니다"
+        detail="가계부를 만들거나 초대 링크로 참여해 주세요."
+        action={{ href: "/family-setup", label: "가족 설정으로 이동" }}
+      />
+    );
+  }
 
   if (!family) return null;
 
@@ -78,6 +109,33 @@ export default function HomeLayout({
       </nav>
 
       <div className="flex-1 overflow-y-auto pb-20 md:pb-0">{children}</div>
+    </div>
+  );
+}
+
+function StatusScreen({
+  title,
+  detail,
+  action,
+}: {
+  title: string;
+  detail: string;
+  action?: { href: string; label: string };
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white text-center">
+      <div className="w-full max-w-sm space-y-3">
+        <p className="font-bold text-gray-900">{title}</p>
+        <p className="text-sm text-gray-600 wrap-break-word">{detail}</p>
+        {action && (
+          <Link
+            href={action.href}
+            className="mt-4 block w-full py-3 rounded-2xl bg-teal-400 text-white font-bold"
+          >
+            {action.label}
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
