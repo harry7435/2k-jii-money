@@ -195,9 +195,20 @@ export async function getCurrentMembership(): Promise<{
   member: Member;
 } | null> {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  // getUser()가 아니라 getSession()을 쓰는 이유:
+  // getUser()는 인증 서버에 네트워크 요청을 보내 토큰을 검증하므로, 로그인 직후처럼
+  // 토큰이 막 발급된 시점에 일시적으로 실패할 수 있다. 그러면 user가 null이 되어
+  // "가족 없음"과 구분되지 않는다. getSession()은 로컬 세션을 읽어 그 경합이 없다.
+  //
+  // 보안상 문제없다. 인가 판단은 서버(proxy.ts의 getUser + RLS)가 하고,
+  // 여기서 얻은 user id는 내 멤버 행을 고르는 용도일 뿐이다.
+  // 세션을 위조해도 RLS가 막는다.
+  const { data: sessionData, error: sessionError } =
+    await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+
+  const user = sessionData.session?.user;
   if (!user) return null;
 
   // 에러를 삼키면 안 된다. RLS나 GRANT가 잘못됐을 때 "가족 없음"과 구분이 안 되고,

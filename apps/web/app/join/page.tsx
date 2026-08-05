@@ -46,12 +46,13 @@ function JoinContent() {
         return;
       }
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      // getUser()는 인증 서버로 네트워크 요청을 보내므로 로그인 직후 일시적으로
+      // 실패할 수 있고, 그러면 로그인된 사용자에게 "로그인 필요"가 뜬다.
+      // getSession()은 로컬 세션을 읽어 그 경합이 없다. 실제 인가는 RLS가 한다.
+      const { data: sessionData } = await supabase.auth.getSession();
 
       if (cancelled) return;
-      if (!user) {
+      if (!sessionData.session?.user) {
         setState({ kind: "needs-login" });
         return;
       }

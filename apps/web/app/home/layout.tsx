@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useFamilyStore } from "@/src/lib/store/familyStore";
+import { createClient } from "@/src/lib/supabase/client";
 import { getCurrentMembership } from "@/src/lib/supabase/queries";
 
 const TABS = [
@@ -21,12 +22,15 @@ export default function HomeLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const qc = useQueryClient();
   const family = useFamilyStore((s) => s.family);
   const setFamily = useFamilyStore((s) => s.setFamily);
   const setMember = useFamilyStore((s) => s.setMember);
 
   // 진실의 원천은 서버다. 미로그인·무소속 상태는 proxy.ts가 이미 걸러내므로
   // 여기서는 리다이렉트하지 않고 store를 채우기만 한다.
+  // staleTime: Infinity를 쓰지 않는다. 세션에 의존하는 값이라, 한 번 null이
+  // 캐시되면 로그인해도 영구히 null로 남고 전체 새로고침 전에는 복구되지 않는다.
   const {
     data: membership,
     isPending,
@@ -34,7 +38,8 @@ export default function HomeLayout({
   } = useQuery({
     queryKey: ["membership"],
     queryFn: getCurrentMembership,
-    staleTime: Infinity,
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: "always",
   });
 
   useEffect(() => {
@@ -43,6 +48,24 @@ export default function HomeLayout({
       setMember(membership.member);
     }
   }, [membership, setFamily, setMember]);
+
+  // 토큰 갱신·로그인·로그아웃이 일어나면 소속 정보를 다시 읽는다.
+  // 이게 없으면 세션이 바뀌어도 이전 세션 기준의 캐시를 계속 쓴다.
+  useEffect(() => {
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "TOKEN_REFRESHED"
+      ) {
+        qc.invalidateQueries({ queryKey: ["membership"] });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [qc]);
 
   // 아래 세 분기는 전부 "아무것도 안 뜨는 화면"을 막기 위한 것이다.
   // 예전에는 조회가 실패해도 null을 반환해 원인 없이 검은 화면만 남았다.
