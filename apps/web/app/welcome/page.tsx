@@ -23,11 +23,28 @@ function WelcomeForm() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // 확인란은 회원가입에만 있다. 로그인 때는 비어 있으므로 검사에서 빼야 한다.
+  const passwordMismatch =
+    mode === "signup" &&
+    passwordConfirm.length > 0 &&
+    password !== passwordConfirm;
+  const canSubmit =
+    Boolean(email) &&
+    password.length >= 6 &&
+    (mode === "login" || (passwordConfirm.length > 0 && !passwordMismatch));
+
   async function handleSubmit(e: { preventDefault: () => void }) {
     e.preventDefault();
+
+    if (mode === "signup" && password !== passwordConfirm) {
+      setError("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -82,10 +99,29 @@ function WelcomeForm() {
             }
             className="w-full border rounded-xl px-4 py-3 outline-none focus:border-teal-400 placeholder:text-gray-500"
           />
+          {mode === "signup" && (
+            <input
+              type="password"
+              placeholder="비밀번호 확인"
+              value={passwordConfirm}
+              onChange={(e) => setPasswordConfirm(e.target.value)}
+              autoComplete="new-password"
+              className={`w-full border rounded-xl px-4 py-3 outline-none placeholder:text-gray-500 ${
+                passwordMismatch
+                  ? "border-red-400 focus:border-red-400"
+                  : "focus:border-teal-400"
+              }`}
+            />
+          )}
+          {passwordMismatch && (
+            <p className="text-red-500 text-sm text-center">
+              비밀번호가 일치하지 않습니다.
+            </p>
+          )}
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
           <button
             type="submit"
-            disabled={!email || password.length < 6 || loading}
+            disabled={!canSubmit || loading}
             className="block w-full py-3.5 rounded-2xl bg-teal-400 text-white text-center font-bold text-base disabled:opacity-40"
           >
             {loading ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
@@ -95,6 +131,7 @@ function WelcomeForm() {
         <button
           onClick={() => {
             setMode(mode === "login" ? "signup" : "login");
+            setPasswordConfirm("");
             setError("");
           }}
           className="text-sm text-gray-600 underline"
