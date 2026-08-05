@@ -51,6 +51,21 @@ export default function SettingsPage() {
   const [inviteError, setInviteError] = useState("");
   const [resetting, setResetting] = useState(false);
 
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
+
+  const passwordMismatch =
+    newPasswordConfirm.length > 0 && newPassword !== newPasswordConfirm;
+  const canChangePassword =
+    newPassword.length >= 6 &&
+    newPasswordConfirm.length > 0 &&
+    !passwordMismatch;
+
   // 카테고리 관리 상태
   const [expandedMajor, setExpandedMajor] = useState<string | null>(null);
   const [expandedMiddle, setExpandedMiddle] = useState<string | null>(null);
@@ -187,6 +202,30 @@ export default function SettingsPage() {
     qc.clear();
     router.replace("/welcome");
     router.refresh();
+  }
+
+  async function handleChangePassword() {
+    if (!canChangePassword || changingPassword) return;
+    setChangingPassword(true);
+    setPasswordMessage(null);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      setPasswordMessage({
+        ok: false,
+        // Supabase의 영어 메시지를 그대로 노출하지 않는다.
+        text: error.message.includes("should be different")
+          ? "기존 비밀번호와 다른 값을 입력하세요."
+          : "비밀번호 변경에 실패했습니다.",
+      });
+    } else {
+      setPasswordMessage({ ok: true, text: "비밀번호가 변경되었습니다." });
+      setNewPassword("");
+      setNewPasswordConfirm("");
+    }
+    setChangingPassword(false);
   }
 
   function handleReset() {
@@ -597,6 +636,52 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* 비밀번호 변경 */}
+      <div className="bg-white mt-2 px-5 py-4 space-y-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase">
+          비밀번호 변경
+        </p>
+        <input
+          type="password"
+          placeholder="새 비밀번호 (6자 이상)"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          autoComplete="new-password"
+          className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-teal-400"
+        />
+        <input
+          type="password"
+          placeholder="새 비밀번호 확인"
+          value={newPasswordConfirm}
+          onChange={(e) => setNewPasswordConfirm(e.target.value)}
+          autoComplete="new-password"
+          className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none ${
+            passwordMismatch
+              ? "border-red-400 focus:border-red-400"
+              : "focus:border-teal-400"
+          }`}
+        />
+        {passwordMismatch && (
+          <p className="text-xs text-red-500">비밀번호가 일치하지 않습니다.</p>
+        )}
+        {passwordMessage && (
+          <p
+            className={`text-xs ${
+              passwordMessage.ok ? "text-teal-500" : "text-red-500"
+            }`}
+          >
+            {passwordMessage.text}
+          </p>
+        )}
+        <button
+          onClick={handleChangePassword}
+          disabled={!canChangePassword || changingPassword}
+          className="w-full py-2.5 rounded-xl bg-teal-400 text-white text-sm font-bold disabled:opacity-40"
+        >
+          {changingPassword ? "변경 중..." : "비밀번호 변경"}
+        </button>
       </div>
 
       {/* 데이터 초기화 / 로그아웃 */}
