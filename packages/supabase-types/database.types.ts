@@ -16,17 +16,14 @@ export type Database = {
       families: {
         Row: {
           id: string;
-          family_code: string;
           created_at: string;
         };
         Insert: {
           id: string;
-          family_code: string;
           created_at?: string | null;
         };
         Update: {
           id?: string;
-          family_code?: string;
           created_at?: string | null;
         };
         Relationships: [];
@@ -36,23 +33,67 @@ export type Database = {
           id: string;
           family_id: string;
           nickname: string;
+          user_id: string | null;
           created_at: string;
         };
         Insert: {
           id: string;
           family_id: string;
           nickname: string;
+          user_id?: string | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
           family_id?: string;
           nickname?: string;
+          user_id?: string | null;
           created_at?: string | null;
         };
         Relationships: [
           {
             foreignKeyName: "members_family_id_fkey";
+            columns: ["family_id"];
+            isOneToOne: false;
+            referencedRelation: "families";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      family_invites: {
+        Row: {
+          id: string;
+          family_id: string;
+          token: string;
+          created_by: string | null;
+          expires_at: string;
+          max_uses: number;
+          used_count: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          family_id: string;
+          token: string;
+          created_by?: string | null;
+          expires_at: string;
+          max_uses?: number;
+          used_count?: number;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          family_id?: string;
+          token?: string;
+          created_by?: string | null;
+          expires_at?: string;
+          max_uses?: number;
+          used_count?: number;
+          created_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "family_invites_family_id_fkey";
             columns: ["family_id"];
             isOneToOne: false;
             referencedRelation: "families";
@@ -265,12 +306,7 @@ export type Database = {
           family_id: string;
           name: string;
           account_type:
-            | "cash"
-            | "bank"
-            | "savings"
-            | "investment"
-            | "other"
-            | "liability";
+            "cash" | "bank" | "savings" | "investment" | "other" | "liability";
           sort_order: number;
           created_at: string;
         };
@@ -279,12 +315,7 @@ export type Database = {
           family_id: string;
           name: string;
           account_type:
-            | "cash"
-            | "bank"
-            | "savings"
-            | "investment"
-            | "other"
-            | "liability";
+            "cash" | "bank" | "savings" | "investment" | "other" | "liability";
           sort_order?: number;
           created_at?: string | null;
         };
@@ -293,12 +324,7 @@ export type Database = {
           family_id?: string;
           name?: string;
           account_type?:
-            | "cash"
-            | "bank"
-            | "savings"
-            | "investment"
-            | "other"
-            | "liability";
+            "cash" | "bank" | "savings" | "investment" | "other" | "liability";
           sort_order?: number;
           created_at?: string | null;
         };

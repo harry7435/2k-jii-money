@@ -4,6 +4,8 @@ import type { Database } from "./database.types";
 // Row types (reading data)
 export type Family = Database["public"]["Tables"]["families"]["Row"];
 export type Member = Database["public"]["Tables"]["members"]["Row"];
+export type FamilyInvite =
+  Database["public"]["Tables"]["family_invites"]["Row"];
 export type Category = Database["public"]["Tables"]["categories"]["Row"];
 export type Transaction = Database["public"]["Tables"]["transactions"]["Row"];
 export type Budget = Database["public"]["Tables"]["budgets"]["Row"];
@@ -30,12 +32,7 @@ export type NewAssetAccount =
 export type NewAssetSnapshot =
   Database["public"]["Tables"]["asset_snapshots"]["Insert"];
 export type AssetAccountType =
-  | "cash"
-  | "bank"
-  | "savings"
-  | "investment"
-  | "other"
-  | "liability";
+  "cash" | "bank" | "savings" | "investment" | "other" | "liability";
 
 // Monthly notes
 export type MonthlyNote = {
