@@ -169,7 +169,9 @@ CREATE TABLE family_invites (
 );
 ```
 
-토큰은 `encode(gen_random_bytes(24), 'base64url')` — 192비트라 대입이 불가능하다.
+토큰은 `translate(encode(gen_random_bytes(24), 'base64'), '+/=', '-_')` — 192비트라 대입이 불가능하다.
+Postgres에는 `base64url` 인코딩이 없으므로 `translate`로 URL-safe 문자로 바꾸고 패딩(`=`)을 제거한다.
+그대로 두면 `+`, `/`가 쿼리스트링에서 깨진다.
 
 RLS는 `USING (family_id = my_family_id())`로 SELECT만 허용한다. 자기 가족이 발급한 초대 목록은 볼 수 있지만, **참여 시 토큰 조회는 RLS를 우회해야 하므로 `join_family_by_invite` 함수 안에서만 이루어진다.** 발급도 `create_invite` 함수가 담당하므로 INSERT/UPDATE/DELETE 정책은 만들지 않는다.
 
@@ -181,7 +183,8 @@ RLS는 `USING (family_id = my_family_id())`로 SELECT만 허용한다. 자기 �
 
 `@supabase/ssr`의 `createBrowserClient` / `createServerClient`를 이미 사용 중이므로 쿠키 기반 세션이 추가 설정 없이 동작한다.
 
-`apps/web/middleware.ts`를 신규 추가해 토큰 갱신과 라우트 가드를 한곳에서 처리한다.
+`apps/web/proxy.ts`를 신규 추가해 토큰 갱신과 라우트 가드를 한곳에서 처리한다.
+Next.js 16에서 `middleware.ts` 규약은 deprecated이고 `proxy.ts`가 그 자리를 대신한다.
 
 - 미로그인 상태로 `/home/*` 접근 → `/welcome`
 - 로그인했으나 가족 없음 → `/family-setup`
@@ -191,9 +194,9 @@ RLS는 `USING (family_id = my_family_id())`로 SELECT만 허용한다. 자기 �
 
 ### 초대 링크 흐름
 
-초대 링크는 `/join?token=<토큰>` 형태다. 미로그인 상태로 이 링크를 열 수 있어야 하므로 middleware가 다음처럼 처리한다.
+초대 링크는 `/join?token=<토큰>` 형태다. 미로그인 상태로 이 링크를 열 수 있어야 하므로 `proxy.ts`가 다음처럼 처리한다.
 
-- 미로그인 → `/welcome?next=` + 원래 URL(인코딩). 로그인·가입 성공 후 `next`로 복귀
+- 미로그인 → `/join`은 공개 경로라 화면이 그대로 뜬다. "가족 초대" 안내를 보여준 뒤 `/welcome?next=`(인코딩된 원래 URL)로 보내고, 로그인·가입 성공 후 `next`로 복귀한다
 - 로그인 + 가족 없음 → 닉네임 입력 후 `join_family_by_invite` 호출
 - 로그인 + 가족 있음 → "이미 가족에 속해 있습니다" 안내 후 `/home`
 
@@ -219,7 +222,7 @@ RLS는 `USING (family_id = my_family_id())`로 SELECT만 허용한다. 자기 �
 | `app/join/page.tsx`          | 신규. `?token=`으로 진입해 `join_family_by_invite` 호출                |
 | `app/home/layout.tsx`        | 클라이언트 리다이렉트 제거, store 초기화 담당                          |
 | `app/home/settings/page.tsx` | 로그아웃, "가족 초대하기"(링크 발급), "데이터 초기화"(확인 모달) 추가  |
-| `middleware.ts`              | 신규                                                                   |
+| `proxy.ts`                   | 신규 (앱 루트, app/ 바깥)                                                                   |
 
 삭제 대상: `app/api/verify-password/`, 환경변수 `APP_PASSWORD`, `NEXT_PUBLIC_FAMILY_CODE`.
 
@@ -299,5 +302,5 @@ RLS는 코드를 읽어서 정확성을 확인할 수 없으므로 실제 시도
 - `.claude/rules/zustand-hydration.md` — hydration 절 삭제, 서버 기반 초기화로 교체
 - `.claude/rules/supabase.md` — GRANT 규칙을 `authenticated` 기준으로 수정, 인증 패턴 추가
 - `.claude/rules/schema.md` — `members.user_id`, RPC 함수, `005` 마이그레이션 추가
-- `apps/web/CLAUDE.md` — "인증 미구현" 서술 수정, `middleware.ts` 추가
+- `apps/web/CLAUDE.md` — "인증 미구현" 서술 수정, `proxy.ts` 추가
 - `README.md` — Flutter 앱 관련 서술 제거, 인증 방식 갱신

@@ -2,37 +2,44 @@
 
 ## 개요
 
-- `useFamilyStore`: `family`, `member` 저장 (localStorage persist)
-- 인증 없음 — 가족 코드 기반 익명 접근
-- `home/layout.tsx`에서 `family` 없으면 `/welcome`으로 리다이렉트
+- `useFamilyStore`: 로그인한 사용자의 `family`, `member`를 담는 **메모리 전용** store
+- 인증은 Supabase Auth(이메일 + 비밀번호). `members.user_id`가 `auth.users`와 1:1로 연결된다
+- 라우트 가드는 `apps/web/proxy.ts`(Next.js 16에서 middleware를 대체한 규약)가 서버에서 처리한다
 
-## persist hydration 문제
+## persist를 쓰지 않는 이유
 
-`persist` 미들웨어는 localStorage에서 **비동기** hydrate한다.
-초기 렌더 시 `family`는 항상 `null`이므로, hydration 완료 전에 리다이렉트하면 새로고침 시 로그인이 풀리는 버그가 발생한다.
+예전에는 `persist` 미들웨어로 localStorage에 저장했고, 그 탓에 hydration 타이밍 문제와 `useHasHydrated()` 훅이 필요했다.
 
-## 해결: `useHasHydrated()` 훅
+지금은 **진실의 원천이 서버**(Auth 세션 쿠키 + `members.user_id`)다. localStorage에 남기면:
 
-`src/lib/store/familyStore.ts`에 `useSyncExternalStore` 기반으로 구현되어 있다.
+- 로그아웃해도 이전 가족 정보가 남는다
+- 계정을 바꿔도 이전 가족이 그대로 보인다
 
-- SSR: `getServerSnapshot` → `false`
-- 클라이언트: `persist.hasHydrated()` + `onFinishHydration` 구독
-- `useState+useEffect` 대신 사용 (린트 규칙 `react-hooks/set-state-in-effect` 위반 방지)
+그래서 `persist`를 제거했고 `useHasHydrated()`도 함께 사라졌다.
 
-## 사용 패턴
+## 값을 채우는 곳
+
+`app/home/layout.tsx`가 마운트 시 `getCurrentMembership()`을 한 번 호출해 store를 채운다.
 
 ```ts
-const hydrated = useHasHydrated();
-const family = useFamilyStore((s) => s.family);
+const { data: membership } = useQuery({
+  queryKey: ["membership"],
+  queryFn: getCurrentMembership,
+  staleTime: Infinity,
+});
 
 useEffect(() => {
-  if (hydrated && !family) router.replace("/welcome");
-}, [hydrated, family, router]);
+  if (membership) {
+    setFamily(membership.family);
+    setMember(membership.member);
+  }
+}, [membership, setFamily, setMember]);
 
-if (!hydrated || !family) return null;
+if (!family) return null;
 ```
 
 ## 규칙
 
-- persist store 값으로 렌더 분기(리다이렉트, 조건부 UI)하는 모든 곳에서 `useHasHydrated()` 필수
-- `home/layout.tsx`에 적용 예시가 있음
+- 미로그인·무소속 상태는 `proxy.ts`가 이미 걸러내므로 페이지에서 리다이렉트를 중복으로 넣지 않는다
+- 로그아웃 시 `clear()`와 React Query 캐시 비우기(`qc.clear()`)를 함께 호출한다 — 안 하면 다음 계정에서 이전 가족 데이터가 잠깐 보인다
+- 하위 페이지는 `useFamilyStore((s) => s.family)`를 그대로 읽으면 된다

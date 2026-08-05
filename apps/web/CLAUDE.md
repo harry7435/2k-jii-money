@@ -18,14 +18,16 @@
 
 ```
 apps/web/
+├── proxy.ts                    # 라우트 가드 (Next.js 16의 middleware 후속 규약)
 ├── app/                        # Next.js App Router 페이지
 │   ├── layout.tsx              # 루트 레이아웃 (Geist 폰트, Material Symbols CDN)
 │   ├── page.tsx                # / → /welcome 리다이렉트
-│   ├── welcome/page.tsx        # 온보딩 시작 화면
-│   ├── create-family/page.tsx  # 가족 생성
-│   ├── join-family/page.tsx    # 가족 참여 (코드 입력)
+│   ├── welcome/page.tsx        # 로그인 / 회원가입
+│   ├── family-setup/page.tsx   # 로그인했으나 가족이 없을 때
+│   ├── create-family/page.tsx  # 가족 생성 (+ 샘플 데이터 옵션)
+│   ├── join/page.tsx           # 초대 링크 참여 (/join?token=...)
 │   └── home/
-│       ├── layout.tsx          # 하단 탭 네비게이션, 인증 가드
+│       ├── layout.tsx          # 하단 탭 네비게이션, familyStore 초기화
 │       ├── page.tsx            # /home → /home/transactions 리다이렉트
 │       ├── transactions/page.tsx
 │       ├── budget/page.tsx
@@ -60,6 +62,7 @@ apps/web/
 │       │   ├── formatters.ts
 │       │   ├── categoryUtils.ts  # getCategoriesByLevel, getChildCategories, getCategoryPath
 │       │   ├── timeUtils.ts      # HH:mm ↔ 12시간제 변환, 다이얼 좌표 계산 (순수 함수)
+│       │   ├── sampleData.ts     # 가입 시 넣을 3개월치 샘플 데이터 생성 (순수 함수)
 │       │   └── trendUtils.ts     # 월별 집계 (buildMonthList, aggregateMonthly*)
 │       └── constants/
 │           └── categories.ts   # DEFAULT_CATEGORY_TREE, DEFAULT_PAYMENT_SOURCES, MAJOR_CATEGORY_TYPE_MAP
@@ -103,5 +106,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 ## 주의사항
 
 - `app/` 디렉토리는 App Router 전용 — `'use client'` 지시어 필요 시 명시
-- 현재 인증(Auth) 미구현 — Supabase Auth 없이 익명 멤버 ID로 동작
+- 인증은 Supabase Auth(이메일 + 비밀번호). 라우트 가드는 `proxy.ts`에서 서버 측으로 처리한다
+- `anon` 역할에는 DB 권한이 없다. 데이터 격리는 `my_family_id()` 기반 RLS가 담당 — 자세한 내용은 `.claude/rules/supabase.md`
 - 타입 에러 발생 시 `as any` 캐스팅보다 타입 단언 방식 선호
