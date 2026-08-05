@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { useFamilyStore } from "@/src/lib/store/familyStore";
+import { createClient } from "@/src/lib/supabase/client";
 import {
   getCategories,
   getMembers,
@@ -24,6 +25,8 @@ import {
   addPaymentSource,
   deletePaymentSource,
   insertMissingSubCategories,
+  createInvite,
+  resetFamilyData,
 } from "@/src/lib/supabase/queries";
 import { CategoryIcon } from "@/src/components/CategoryIcon";
 import {
@@ -42,6 +45,11 @@ export default function SettingsPage() {
   const [showQR, setShowQR] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // 초대 링크는 발급했을 때만 화면에 남는다. 토큰이라 다시 볼 필요가 없다.
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   // 카테고리 관리 상태
   const [expandedMajor, setExpandedMajor] = useState<string | null>(null);
@@ -144,17 +152,52 @@ export default function SettingsPage() {
     [],
   );
 
+  const inviteMutation = useMutation({
+    mutationFn: createInvite,
+    onSuccess: (invite) => {
+      setInviteError("");
+      setInviteUrl(
+        `${window.location.origin}/join?token=${encodeURIComponent(invite.token)}`,
+      );
+    },
+    onError: () => setInviteError("초대 링크 발급에 실패했습니다."),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: resetFamilyData,
+    onSuccess: () => {
+      // 가계부 데이터를 전부 비웠으므로 캐시도 통째로 버린다.
+      qc.clear();
+      setResetting(false);
+    },
+    onError: () => setResetting(false),
+  });
+
   function handleCopy() {
-    if (!family) return;
-    navigator.clipboard.writeText(family.family_code);
+    if (!inviteUrl) return;
+    navigator.clipboard.writeText(inviteUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function handleLeave() {
-    if (!confirm("정말 나가시겠습니까?")) return;
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
     clear();
+    qc.clear();
     router.replace("/welcome");
+    router.refresh();
+  }
+
+  function handleReset() {
+    if (
+      !confirm(
+        "가계부의 모든 거래·예산·자산·월별메모를 삭제합니다.\n카테고리와 거래출처는 남습니다.\n\n되돌릴 수 없습니다. 계속할까요?",
+      )
+    )
+      return;
+    setResetting(true);
+    resetMutation.mutate();
   }
 
   const isLoading = catLoading || membersLoading || paymentSourcesLoading;
@@ -172,7 +215,7 @@ export default function SettingsPage() {
         <div>
           <p className="font-bold text-lg">{member.nickname}</p>
           <p className="text-xs text-gray-500">
-            가족 코드: {family.family_code}
+            가족 구성원 {members.length}명
           </p>
         </div>
       </div>
@@ -183,27 +226,44 @@ export default function SettingsPage() {
           가족 정보
         </p>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-700">가족 코드</span>
-          <div className="flex items-center gap-2">
-            <span className="font-bold tracking-widest text-teal-500">
-              {family.family_code}
-            </span>
-            <button
-              onClick={handleCopy}
-              className="text-gray-500 hover:text-teal-400"
-            >
-              <Copy size={16} />
-            </button>
-            <button
-              onClick={() => setShowQR(true)}
-              className="text-gray-500 hover:text-teal-400"
-            >
-              <QrCode size={16} />
-            </button>
-          </div>
+          <span className="text-sm text-gray-700">가족 초대</span>
+          <button
+            onClick={() => inviteMutation.mutate()}
+            disabled={inviteMutation.isPending}
+            className="text-sm text-teal-500 hover:text-teal-600 disabled:opacity-40"
+          >
+            {inviteMutation.isPending ? "발급 중..." : "초대 링크 만들기"}
+          </button>
         </div>
-        {copied && (
-          <p className="text-xs text-teal-500">코드가 복사되었습니다!</p>
+
+        {inviteError && <p className="text-xs text-red-500">{inviteError}</p>}
+
+        {inviteUrl && (
+          <div className="rounded-xl bg-gray-50 p-3 space-y-2">
+            <p className="text-[11px] text-gray-500">
+              7일간 유효하며 한 번만 사용할 수 있습니다.
+            </p>
+            <p className="text-xs break-all text-gray-700">{inviteUrl}</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1 text-xs text-teal-500"
+              >
+                <Copy size={13} />
+                링크 복사
+              </button>
+              <button
+                onClick={() => setShowQR(true)}
+                className="flex items-center gap-1 text-xs text-teal-500"
+              >
+                <QrCode size={13} />
+                QR 보기
+              </button>
+            </div>
+            {copied && (
+              <p className="text-xs text-teal-500">링크가 복사되었습니다!</p>
+            )}
+          </div>
         )}
 
         <button
@@ -539,29 +599,41 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 로그아웃 */}
-      <div className="bg-white mt-2 px-5 py-4 mb-4">
+      {/* 데이터 초기화 / 로그아웃 */}
+      <div className="bg-white mt-2 px-5 py-4 mb-4 space-y-4">
+        <div>
+          <button
+            onClick={handleReset}
+            disabled={resetting}
+            className="flex items-center gap-2 text-red-500 text-sm disabled:opacity-40"
+          >
+            <Trash2 size={16} />
+            {resetting ? "삭제 중..." : "데이터 초기화"}
+          </button>
+          <p className="text-xs text-gray-400 mt-1">
+            거래·예산·자산·월별메모를 모두 삭제합니다. 샘플로 둘러본 뒤 처음부터
+            시작할 때 사용하세요.
+          </p>
+        </div>
+
         <button
-          onClick={handleLeave}
-          className="flex items-center gap-2 text-red-500 text-sm"
+          onClick={handleSignOut}
+          className="flex items-center gap-2 text-gray-600 text-sm"
         >
           <LogOut size={16} />
-          가족에서 나가기
+          로그아웃
         </button>
       </div>
 
       {/* QR 모달 */}
-      {showQR && (
+      {showQR && inviteUrl && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           onClick={() => setShowQR(false)}
         >
           <div className="bg-white rounded-2xl p-8 space-y-4 flex flex-col items-center">
-            <p className="font-bold">가족 코드 QR</p>
-            <QRCode value={family.family_code} size={200} />
-            <p className="text-2xl font-bold tracking-[0.3em] text-teal-500">
-              {family.family_code}
-            </p>
+            <p className="font-bold">초대 링크 QR</p>
+            <QRCode value={inviteUrl} size={200} />
             <p className="text-xs text-gray-500">탭하여 닫기</p>
           </div>
         </div>

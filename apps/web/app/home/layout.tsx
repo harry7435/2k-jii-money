@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { useFamilyStore, useHasHydrated } from "@/src/lib/store/familyStore";
+import { useFamilyStore } from "@/src/lib/store/familyStore";
+import { getCurrentMembership } from "@/src/lib/supabase/queries";
 
 const TABS = [
   { href: "/home/transactions", icon: "receipt_long", label: "내역" },
@@ -19,15 +21,26 @@ export default function HomeLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const family = useFamilyStore((s) => s.family);
-  const hydrated = useHasHydrated();
+  const setFamily = useFamilyStore((s) => s.setFamily);
+  const setMember = useFamilyStore((s) => s.setMember);
+
+  // 진실의 원천은 서버다. 미로그인·무소속 상태는 middleware가 이미 걸러내므로
+  // 여기서는 리다이렉트하지 않고 store를 채우기만 한다.
+  const { data: membership } = useQuery({
+    queryKey: ["membership"],
+    queryFn: getCurrentMembership,
+    staleTime: Infinity,
+  });
 
   useEffect(() => {
-    if (hydrated && !family) router.replace("/welcome");
-  }, [hydrated, family, router]);
+    if (membership) {
+      setFamily(membership.family);
+      setMember(membership.member);
+    }
+  }, [membership, setFamily, setMember]);
 
-  if (!hydrated || !family) return null;
+  if (!family) return null;
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen max-w-md md:max-w-none mx-auto bg-white">

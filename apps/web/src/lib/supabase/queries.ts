@@ -6,12 +6,14 @@ import {
   DEFAULT_PAYMENT_SOURCES,
 } from "../constants/categories";
 import { DEFAULT_ASSET_ACCOUNTS } from "../constants/assets";
+import { buildSampleData } from "../utils/sampleData";
 import type { CategoryNode } from "../constants/categories";
 import type {
   Category,
   Transaction,
   Budget,
   Family,
+  FamilyInvite,
   Member,
   PaymentSource,
   AssetAccount,
@@ -20,73 +22,201 @@ import type {
   MonthlyNote,
 } from "@2k-jii-money/supabase-types";
 
-const FAMILY_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function generateFamilyCode(): string {
-  return Array.from(
-    { length: 6 },
-    () =>
-      FAMILY_CODE_CHARS[Math.floor(Math.random() * FAMILY_CODE_CHARS.length)],
-  ).join("");
-}
-
 // ─── Family ────────────────────────────────────────────────────────────────
+//
+// 가족 생성/참여는 RPC 전담이다. RLS를 켜면 "아직 속하지 않은 가족"을 클라이언트에서
+// 조회할 수 없고, 조회를 허용하면 임의의 family_id로 자신을 멤버 등록할 수 있게 된다.
+// 자세한 근거는 docs/superpowers/specs/2026-08-05-web-auth-rls-design.md 참조.
 
 export async function createFamily(
   nickname: string,
 ): Promise<{ family: Family; member: Member }> {
   const supabase = createClient();
-  const familyCode = generateFamilyCode();
-  const familyId = uuidv4();
-  const memberId = uuidv4();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: family, error: fErr } = await (supabase as any)
-    .from("families")
-    .insert({ id: familyId, family_code: familyCode })
-    .select()
-    .single();
-  if (fErr) throw fErr;
+  const { data, error } = await (supabase as any).rpc("create_family", {
+    p_nickname: nickname,
+  });
+  if (error) throw error;
+
+  const family = data as Family;
+
+  // RPC는 family만 돌려주므로 방금 만들어진 본인 멤버 행을 다시 읽는다.
+  const membership = await getCurrentMembership();
+  if (!membership) throw new Error("가족 생성 직후 멤버 조회에 실패했습니다.");
+
+  await createDefaultCategories(family.id);
+  await createDefaultPaymentSources(family.id);
+  await createDefaultAssetAccounts(family.id);
+
+  return membership;
+}
+
+/**
+ * 샘플 데이터를 실제로 삽입한다.
+ *
+ * sampleData.ts 는 카테고리를 이름 경로로만 지정하므로, 여기서 방금 만들어진
+ * 기본 카테고리·자산계좌의 id로 해석한다. 경로가 안 맞으면 조용히 건너뛰는 대신
+ * 예외를 던진다 — 절반만 채워진 샘플이 더 나쁘다.
+ */
+export async function seedSampleData(
+  familyId: string,
+  memberId: string,
+): Promise<void> {
+  const supabase = createClient();
+  const [categories, accounts] = await Promise.all([
+    getCategories(familyId),
+    getAssetAccounts(familyId),
+  ]);
+
+  const byId = new Map(categories.map((c) => [c.id, c]));
+
+  // 경로 첫 칸은 대분류(level 1)의 자식이고, 그 뒤로는 직전 카테고리의 자식이다.
+  // "미용실"처럼 서로 다른 중분류 아래 같은 이름이 있어 경로로 좁혀야 한다.
+  function resolve(path: string[]): Category | null {
+    let current: Category | null = null;
+    for (let i = 0; i < path.length; i++) {
+      const name = path[i];
+      const match = categories.find((c) =>
+        i === 0
+          ? c.name === name &&
+            c.parent_id !== null &&
+            byId.get(c.parent_id)?.level === 1
+          : c.name === name && c.parent_id === current!.id,
+      );
+      if (!match) return null;
+      current = match;
+    }
+    return current;
+  }
+
+  const accountByName = new Map(accounts.map((a) => [a.name, a.id]));
+  const { transactions, budgets, snapshots } = buildSampleData(new Date());
+
+  const txRows = transactions.map((t) => {
+    const category = resolve(t.path);
+    if (!category) {
+      throw new Error(
+        `샘플 카테고리를 찾을 수 없습니다: ${t.path.join(" > ")}`,
+      );
+    }
+    return {
+      id: uuidv4(),
+      family_id: familyId,
+      member_id: memberId,
+      category_id: category.id,
+      type: t.type,
+      amount: t.amount,
+      memo: t.memo,
+      date: t.date,
+      time: t.time,
+      payment_source_id: null,
+      evaluation: t.evaluation,
+    };
+  });
+
+  const budgetRows = budgets.map((b) => {
+    const category = b.path ? resolve(b.path) : null;
+    if (b.path && !category) {
+      throw new Error(
+        `샘플 예산 카테고리를 찾을 수 없습니다: ${b.path.join(" > ")}`,
+      );
+    }
+    return {
+      id: uuidv4(),
+      family_id: familyId,
+      category_id: category?.id ?? null,
+      year_month: b.yearMonth,
+      amount: b.amount,
+    };
+  });
+
+  const snapshotRows = snapshots.flatMap((s) => {
+    const accountId = accountByName.get(s.accountName);
+    // 기본 계좌 목록이 바뀌었을 수 있으니 없는 계좌는 건너뛴다.
+    if (!accountId) return [];
+    return [
+      {
+        id: uuidv4(),
+        family_id: familyId,
+        account_id: accountId,
+        year_month: s.yearMonth,
+        amount: s.amount,
+      },
+    ];
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: member, error: mErr } = await (supabase as any)
+  const sb = supabase as any;
+  const { error: txErr } = await sb.from("transactions").insert(txRows);
+  if (txErr) throw txErr;
+  const { error: bErr } = await sb.from("budgets").insert(budgetRows);
+  if (bErr) throw bErr;
+  const { error: sErr } = await sb.from("asset_snapshots").insert(snapshotRows);
+  if (sErr) throw sErr;
+}
+
+export async function joinFamilyByInvite(
+  token: string,
+  nickname: string,
+): Promise<Family> {
+  const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("join_family_by_invite", {
+    p_token: token,
+    p_nickname: nickname,
+  });
+  if (error) throw error;
+  return data as Family;
+}
+
+export async function createInvite(): Promise<FamilyInvite> {
+  const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("create_invite");
+  if (error) throw error;
+  return data as FamilyInvite;
+}
+
+export async function resetFamilyData(): Promise<void> {
+  const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).rpc("reset_family_data");
+  if (error) throw error;
+}
+
+/**
+ * 로그인한 사용자의 멤버 행과 소속 가족을 함께 조회한다.
+ * RLS가 이미 자기 가족으로 범위를 좁히므로 family_id 필터가 필요 없다.
+ * 가족이 없으면 null — 온보딩이 끝나지 않은 상태다.
+ */
+export async function getCurrentMembership(): Promise<{
+  family: Family;
+  member: Member;
+} | null> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: member } = await (supabase as any)
     .from("members")
-    .insert({ id: memberId, family_id: familyId, nickname })
     .select()
-    .single();
-  if (mErr) throw mErr;
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!member) return null;
 
-  await createDefaultCategories(familyId);
-  await createDefaultPaymentSources(familyId);
-  await createDefaultAssetAccounts(familyId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: family } = await (supabase as any)
+    .from("families")
+    .select()
+    .eq("id", member.family_id)
+    .maybeSingle();
+  if (!family) return null;
 
   return { family: family as Family, member: member as Member };
-}
-
-export async function findFamilyByCode(code: string): Promise<Family | null> {
-  const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase as any)
-    .from("families")
-    .select()
-    .eq("family_code", code.toUpperCase())
-    .single();
-  return (data as Family) ?? null;
-}
-
-export async function joinFamily(
-  familyId: string,
-  nickname: string,
-): Promise<Member> {
-  const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("members")
-    .insert({ id: uuidv4(), family_id: familyId, nickname })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as Member;
 }
 
 export async function getMembers(familyId: string): Promise<Member[]> {

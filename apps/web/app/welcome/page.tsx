@@ -1,70 +1,51 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Wallet } from 'lucide-react'
-import { findFamilyByCode, getMembers } from '@/src/lib/supabase/queries'
-import { useFamilyStore } from '@/src/lib/store/familyStore'
-import type { Family, Member } from '@2k-jii-money/supabase-types'
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Wallet } from "lucide-react";
+import { createClient } from "@/src/lib/supabase/client";
 
-type Step = 'password' | 'member'
+type Mode = "login" | "signup";
 
-export default function WelcomePage() {
-  const router = useRouter()
-  const { setFamily, setMember } = useFamilyStore()
-  const [step, setStep] = useState<Step>('password')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [familyData, setFamilyData] = useState<Family | null>(null)
-  const [members, setMembers] = useState<Member[]>([])
+/** 로그인 후 돌아갈 경로. 같은 출처의 절대 경로만 허용한다 (오픈 리다이렉트 방지). */
+function safeNext(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith("/")) return null;
+  if (raw.startsWith("//") || raw.startsWith("/\\")) return null;
+  return raw;
+}
 
-  async function handlePasswordSubmit(e: { preventDefault: () => void }) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+function WelcomeForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
 
-    try {
-      const res = await fetch('/api/verify-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      })
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || '비밀번호가 틀렸습니다.')
-        return
-      }
+  async function handleSubmit(e: { preventDefault: () => void }) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-      const familyCode = process.env.NEXT_PUBLIC_FAMILY_CODE
-      if (!familyCode) {
-        setError('서버 설정 오류 (NEXT_PUBLIC_FAMILY_CODE 미설정)')
-        return
-      }
+    const supabase = createClient();
+    const { error: authError } =
+      mode === "login"
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password });
 
-      const loaded = await findFamilyByCode(familyCode)
-      if (!loaded) {
-        setError('가족 정보를 불러올 수 없습니다.')
-        return
-      }
-
-      const loadedMembers = await getMembers(loaded.id)
-      setFamilyData(loaded)
-      setMembers(loadedMembers)
-      setStep('member')
-    } catch {
-      setError('오류가 발생했습니다.')
-    } finally {
-      setLoading(false)
+    if (authError) {
+      setError(messageFor(authError.message, mode));
+      setLoading(false);
+      return;
     }
-  }
 
-  function handleMemberSelect(member: Member) {
-    if (!familyData) return
-    setFamily(familyData)
-    setMember(member)
-    router.push('/home/transactions')
+    // middleware가 가족 소속 여부를 보고 /home 또는 /family-setup으로 보낸다.
+    router.replace(next ?? "/");
+    router.refresh();
   }
 
   return (
@@ -76,45 +57,78 @@ export default function WelcomePage() {
 
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-gray-900">우리집 가계부</h1>
-          <p className="text-gray-600 text-sm">부부가 함께 관리하는 스마트 가계부</p>
+          <p className="text-gray-600 text-sm">
+            부부가 함께 관리하는 스마트 가계부
+          </p>
         </div>
 
-        {step === 'password' && (
-          <form onSubmit={handlePasswordSubmit} className="w-full space-y-3">
-            <input
-              type="password"
-              placeholder="비밀번호를 입력하세요"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 outline-none focus:border-teal-400 text-center placeholder:text-gray-500"
-              autoFocus
-            />
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            <button
-              type="submit"
-              disabled={!password || loading}
-              className="block w-full py-3.5 rounded-2xl bg-teal-400 text-white text-center font-bold text-base disabled:opacity-40"
-            >
-              {loading ? '확인 중...' : '입장하기'}
-            </button>
-          </form>
-        )}
+        <form onSubmit={handleSubmit} className="w-full space-y-3">
+          <input
+            type="email"
+            placeholder="이메일"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            className="w-full border rounded-xl px-4 py-3 outline-none focus:border-teal-400 placeholder:text-gray-500"
+            autoFocus
+          />
+          <input
+            type="password"
+            placeholder="비밀번호 (6자 이상)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={
+              mode === "login" ? "current-password" : "new-password"
+            }
+            className="w-full border rounded-xl px-4 py-3 outline-none focus:border-teal-400 placeholder:text-gray-500"
+          />
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          <button
+            type="submit"
+            disabled={!email || password.length < 6 || loading}
+            className="block w-full py-3.5 rounded-2xl bg-teal-400 text-white text-center font-bold text-base disabled:opacity-40"
+          >
+            {loading ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
+          </button>
+        </form>
 
-        {step === 'member' && (
-          <div className="w-full space-y-3">
-            <p className="text-center text-sm text-gray-600 font-semibold">누구로 입장할까요?</p>
-            {members.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => handleMemberSelect(m)}
-                className="block w-full py-3.5 rounded-2xl border-2 border-teal-400 text-teal-600 text-center font-bold text-base"
-              >
-                {m.nickname}
-              </button>
-            ))}
-          </div>
-        )}
+        <button
+          onClick={() => {
+            setMode(mode === "login" ? "signup" : "login");
+            setError("");
+          }}
+          className="text-sm text-gray-600 underline"
+        >
+          {mode === "login"
+            ? "계정이 없으신가요? 회원가입"
+            : "이미 계정이 있으신가요? 로그인"}
+        </button>
       </div>
     </div>
-  )
+  );
+}
+
+/** Supabase가 돌려주는 영어 메시지를 그대로 노출하지 않는다. */
+function messageFor(raw: string, mode: Mode): string {
+  if (raw.includes("Invalid login credentials")) {
+    return "이메일 또는 비밀번호가 올바르지 않습니다.";
+  }
+  if (raw.includes("already registered") || raw.includes("already been")) {
+    return "이미 가입된 이메일입니다.";
+  }
+  if (raw.includes("Password")) {
+    return "비밀번호는 6자 이상이어야 합니다.";
+  }
+  return mode === "login"
+    ? "로그인에 실패했습니다."
+    : "회원가입에 실패했습니다.";
+}
+
+export default function WelcomePage() {
+  // useSearchParams는 Suspense 경계가 필요하다.
+  return (
+    <Suspense fallback={null}>
+      <WelcomeForm />
+    </Suspense>
+  );
 }
