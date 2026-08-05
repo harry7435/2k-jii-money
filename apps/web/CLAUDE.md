@@ -10,7 +10,7 @@
 - **스타일**: Tailwind CSS v4 (`@tailwindcss/postcss`)
 - **아이콘**: Material Symbols Outlined (CDN), lucide-react
 - **백엔드**: Supabase (`@supabase/supabase-js` v2, `@supabase/ssr`)
-- **상태관리**: Zustand v5 (persist 미들웨어로 localStorage 저장), TanStack React Query v5
+- **상태관리**: Zustand v5 (familyStore는 메모리 전용 — 서버가 진실의 원천, uiPrefsStore는 persist 미들웨어로 localStorage 저장), TanStack React Query v5
 - **차트**: recharts v3
 - **유틸리티**: date-fns v4, uuid v13, react-qr-code
 
@@ -75,7 +75,7 @@ apps/web/
 상세 규칙은 `.claude/rules/` 참조:
 
 - `supabase.md` — Supabase 클라이언트 사용, 데이터 페칭 패턴
-- `zustand-hydration.md` — Zustand 전역 상태, persist hydration 및 `useHasHydrated()` 훅
+- `zustand-hydration.md` — Zustand 전역 상태 (familyStore는 메모리 전용, 서버가 진실의 원천)
 - `style.md` — Tailwind v4, 아이콘, 모달·바텀시트·DateTimePicker 패턴
 - `categories.md` — 3단계 카테고리 구조, 유틸 함수, 거래 타입 매핑
 - `schema.md` — DB 스키마 특이사항 (time, evaluation, payment_sources 등)
