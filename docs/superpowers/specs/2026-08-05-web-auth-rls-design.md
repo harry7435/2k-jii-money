@@ -102,17 +102,18 @@ GRANT EXECUTE ON FUNCTION my_family_id() TO authenticated;
 
 ### RLS 정책
 
-대상 테이블 9개: `families`, `members`, `categories`, `transactions`, `budgets`, `payment_sources`, `asset_accounts`, `asset_snapshots`, `monthly_notes`.
+대상 테이블 10개: `families`, `members`, `categories`, `transactions`, `budgets`, `payment_sources`, `asset_accounts`, `asset_snapshots`, `monthly_notes`, `family_invites`(신규).
 
-`families`를 제외한 8개는 모두 `family_id` 컬럼을 가지므로 정책이 완전히 균일하다.
+`families`를 제외한 9개는 모두 `family_id` 컬럼을 가지므로 정책이 완전히 균일하다.
 
-| 테이블     | SELECT / INSERT / UPDATE / DELETE                                                        |
-| ---------- | ---------------------------------------------------------------------------------------- |
-| `families` | `USING (id = my_family_id())` — SELECT만. INSERT/UPDATE/DELETE 전부 금지                 |
-| `members`  | `USING (family_id = my_family_id())` — SELECT, UPDATE만. INSERT/DELETE 금지              |
-| 나머지 7개 | `USING (family_id = my_family_id()) WITH CHECK (family_id = my_family_id())` — 전체 CRUD |
+| 테이블           | SELECT / INSERT / UPDATE / DELETE                                                        |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| `families`       | `USING (id = my_family_id())` — SELECT만. INSERT/UPDATE/DELETE 전부 금지                 |
+| `members`        | `USING (family_id = my_family_id())` — SELECT, UPDATE만. INSERT/DELETE 금지              |
+| `family_invites` | `USING (family_id = my_family_id())` — SELECT만. 발급·사용은 RPC 전담                    |
+| 나머지 7개       | `USING (family_id = my_family_id()) WITH CHECK (family_id = my_family_id())` — 전체 CRUD |
 
-`families`가 SELECT 전용인 이유는 컬럼이 `id`, `family_code`, `created_at`뿐이라 사용자가 정당하게 수정할 값이 없기 때문이다. 가족 생성은 RPC가 담당한다.
+`families`가 SELECT 전용인 이유는 `family_code` 삭제 후 컬럼이 `id`, `created_at`뿐이라 사용자가 정당하게 수정할 값이 없기 때문이다. 가족 생성은 RPC가 담당한다.
 
 `members`의 UPDATE는 닉네임 변경 용도이며, 이 경우에도 `WITH CHECK (family_id = my_family_id())`를 함께 건다.
 
@@ -128,17 +129,22 @@ GRANT EXECUTE ON FUNCTION my_family_id() TO authenticated;
 
 1. `auth.uid()`가 `null`이면 예외
 2. 이미 어떤 가족의 멤버면 예외
-3. 6자리 가족 코드를 중복 없이 생성 (충돌 시 재시도 루프)
-4. `families` INSERT → `members` INSERT (`user_id = auth.uid()`)
-5. 생성된 family 반환
+3. `families` INSERT → `members` INSERT (`user_id = auth.uid()`)
+4. 생성된 family 반환
 
-**`join_family_by_code(p_code text, p_nickname text) RETURNS families`**
+**`create_invite() RETURNS family_invites`**
+
+호출자의 가족에 대한 초대를 발급한다. 만료 7일, 최대 1회 사용. 기존 미사용 초대가 있어도 새로 발급하며, 이전 것은 만료를 기다리거나 사용되지 않은 채 남는다.
+
+**`join_family_by_invite(p_token text, p_nickname text) RETURNS families`**
 
 1. `auth.uid()`가 `null`이면 예외
 2. 이미 어떤 가족의 멤버면 예외
-3. 코드로 가족 조회, 없으면 예외
-4. `members` INSERT
+3. 토큰 조회 — 없거나, `expires_at`이 지났거나, `used_count >= max_uses`면 예외
+4. `members` INSERT → `used_count` 증가
 5. 해당 family 반환
+
+3~4단계는 동일 트랜잭션이며 초대 행을 `FOR UPDATE`로 잠근다. 잠그지 않으면 두 사람이 같은 링크를 동시에 열었을 때 둘 다 검사를 통과해 1회용 초대가 2회 사용될 수 있다.
 
 **`reset_family_data() RETURNS void`**
 
@@ -146,9 +152,28 @@ GRANT EXECUTE ON FUNCTION my_family_id() TO authenticated;
 
 단일 함수로 두는 이유는 원자성과 왕복 횟수(5회 → 1회) 때문이다.
 
-### 알려진 한계
+### 초대 토큰
 
-가족 코드는 6자리이므로 자동화된 대입 공격으로 남의 가족에 참여할 이론적 가능성이 있다. 이는 현재 구조에도 이미 존재하는 위험이며 이번 작업에서 해결하지 않는다. 향후 개선안은 만료 시간과 사용 횟수 제한이 있는 초대 토큰 테이블이다.
+기존 6자리 `family_code`는 조합이 32^6 ≈ 10억으로, 자동화된 대입으로 남의 가족에 참여할 여지가 있었다. 만료와 사용 횟수 제한이 있는 초대 토큰으로 교체한다.
+
+```sql
+CREATE TABLE family_invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  token TEXT UNIQUE NOT NULL,
+  created_by UUID REFERENCES members(id) ON DELETE SET NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  max_uses INTEGER NOT NULL DEFAULT 1,
+  used_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+토큰은 `encode(gen_random_bytes(24), 'base64url')` — 192비트라 대입이 불가능하다.
+
+RLS는 `USING (family_id = my_family_id())`로 SELECT만 허용한다. 자기 가족이 발급한 초대 목록은 볼 수 있지만, **참여 시 토큰 조회는 RLS를 우회해야 하므로 `join_family_by_invite` 함수 안에서만 이루어진다.** 발급도 `create_invite` 함수가 담당하므로 INSERT/UPDATE/DELETE 정책은 만들지 않는다.
+
+`families.family_code` 컬럼은 삭제한다. 남겨두면 언젠가 그 경로로 다시 참여 기능이 붙어 대입 공격 면이 되살아난다.
 
 ## 웹 애플리케이션
 
@@ -162,7 +187,17 @@ GRANT EXECUTE ON FUNCTION my_family_id() TO authenticated;
 - 로그인했으나 가족 없음 → `/family-setup`
 - 로그인 + 가족 있음으로 `/welcome` 또는 `/family-setup` 접근 → `/home`
 
-`/family-setup`은 신규 페이지로, "가족 만들기"와 "가족 참여하기" 두 버튼만 두고 각각 기존 `/create-family`, `/join-family`로 분기한다. 가족 유무 판정은 `my_family_id()` 결과가 `null`인지로 한다.
+`/family-setup`은 신규 페이지로, "가족 만들기" 버튼과 "초대 링크를 받으셨다면 그 링크로 접속하세요"라는 안내를 둔다. 참여는 링크 전용이므로 버튼으로 진입하는 경로가 없다. 가족 유무 판정은 `my_family_id()` 결과가 `null`인지로 한다.
+
+### 초대 링크 흐름
+
+초대 링크는 `/join?token=<토큰>` 형태다. 미로그인 상태로 이 링크를 열 수 있어야 하므로 middleware가 다음처럼 처리한다.
+
+- 미로그인 → `/welcome?next=` + 원래 URL(인코딩). 로그인·가입 성공 후 `next`로 복귀
+- 로그인 + 가족 없음 → 닉네임 입력 후 `join_family_by_invite` 호출
+- 로그인 + 가족 있음 → "이미 가족에 속해 있습니다" 안내 후 `/home`
+
+`next` 파라미터는 오픈 리다이렉트가 되지 않도록 **`/`로 시작하는 같은 출처 경로만 허용**한다. `//evil.com` 형태도 차단해야 한다.
 
 현재 `app/home/layout.tsx`에서 클라이언트로 수행하던 리다이렉트가 서버로 올라가므로, 미로그인 사용자에게 화면이 잠깐 노출되는 깜빡임이 사라진다.
 
@@ -179,11 +214,11 @@ GRANT EXECUTE ON FUNCTION my_family_id() TO authenticated;
 | 경로                         | 변경                                                                   |
 | ---------------------------- | ---------------------------------------------------------------------- |
 | `app/welcome/page.tsx`       | 로그인 / 회원가입 화면으로 교체. 비밀번호 게이트와 멤버 선택 단계 삭제 |
-| `app/family-setup/page.tsx`  | 신규. "가족 만들기 / 참여하기" 분기 화면                               |
+| `app/family-setup/page.tsx`  | 신규. "가족 만들기" + 초대 링크 안내                                   |
 | `app/create-family/page.tsx` | `create_family` RPC 호출. "샘플 데이터로 시작하기" 체크박스 추가       |
-| `app/join-family/page.tsx`   | `join_family_by_code` RPC 호출                                         |
+| `app/join/page.tsx`          | 신규. `?token=`으로 진입해 `join_family_by_invite` 호출                |
 | `app/home/layout.tsx`        | 클라이언트 리다이렉트 제거, store 초기화 담당                          |
-| `app/home/settings/page.tsx` | 로그아웃 버튼, "데이터 초기화" 버튼(확인 모달) 추가                    |
+| `app/home/settings/page.tsx` | 로그아웃, "가족 초대하기"(링크 발급), "데이터 초기화"(확인 모달) 추가  |
 | `middleware.ts`              | 신규                                                                   |
 
 삭제 대상: `app/api/verify-password/`, 환경변수 `APP_PASSWORD`, `NEXT_PUBLIC_FAMILY_CODE`.
@@ -211,11 +246,15 @@ Flutter 앱을 삭제하므로 `anon` 권한 회수를 미룰 이유가 없다. 
 ### `005_auth_and_rls.sql` 내용
 
 1. `members.user_id` 컬럼 및 인덱스 추가
-2. `my_family_id()` 생성
-3. `create_family`, `join_family_by_code`, `reset_family_data` 생성
-4. 기존 `"Allow all for anon"` 정책 9개 DROP
-5. 기존 `anon` GRANT 9개 REVOKE
-6. `authenticated` GRANT 및 신규 정책 생성
+2. `family_invites` 테이블 생성
+3. `my_family_id()` 생성
+4. `create_family`, `create_invite`, `join_family_by_invite`, `reset_family_data` 생성
+5. 기존 `"Allow all for anon"` 정책 9개 DROP
+6. 기존 `anon` GRANT 9개 REVOKE
+7. `authenticated` GRANT 및 신규 정책 생성
+8. `families.family_code` 컬럼 DROP
+
+`family_code` DROP을 마지막에 두는 이유는, 앞 단계가 실패해 마이그레이션이 중단되었을 때 되돌릴 수 없는 변경을 최소화하기 위해서다.
 
 `supabase/schema.sql`에도 동일한 최종 상태를 반영한다 (단일 진실 공급원).
 
@@ -248,8 +287,12 @@ RLS는 코드를 읽어서 정확성을 확인할 수 없으므로 실제 시도
 4. B의 거래 DELETE → 0건 영향
 5. `families` 전체 SELECT → 자기 가족 1건만
 6. `members` 직접 INSERT → 거부
-7. 이미 가족이 있는 상태에서 `join_family_by_code` 호출 → 예외
+7. 이미 가족이 있는 상태에서 `join_family_by_invite` 호출 → 예외
 8. 로그아웃 상태(anon)에서 모든 테이블 SELECT → 거부
+9. `family_invites` 전체 SELECT → 자기 가족 것만
+10. 이미 사용된 초대 토큰으로 `join_family_by_invite` 재호출 → 예외
+11. `expires_at`을 과거로 조작한 토큰으로 호출 → 예외
+12. `/welcome?next=//evil.com` 접근 → 외부로 나가지 않고 `/home`으로
 
 ### 문서 갱신
 
