@@ -43,9 +43,11 @@ apps/web/
 │   │   ├── BudgetProgressBar.tsx
 │   │   ├── CategoryIcon.tsx
 │   │   ├── MonthSelector.tsx
+│   │   ├── Skeleton.tsx        # 로딩 스켈레톤 공통 프리미티브 (animate-pulse div)
 │   │   ├── dashboard/          # 대시보드 서브 컴포넌트
 │   │   ├── trend/              # 월별 추이 차트 + 카테고리 멀티셀렉트
-│   │   └── assets/             # 자산 현황 컴포넌트
+│   │   ├── assets/             # 자산 현황 컴포넌트
+│   │   └── skeletons/          # 페이지별 로딩 스켈레톤 (DashboardSkeleton 등)
 │   └── lib/
 │       ├── providers.tsx       # QueryClientProvider 래퍼
 │       ├── store/

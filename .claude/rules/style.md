@@ -67,6 +67,43 @@
 
 적용 예: `src/components/dashboard/MonthlyNoteCard.tsx`
 
+## 페이지 로딩 스켈레톤 패턴
+
+각 최상위 페이지(`app/home/*/page.tsx`)는 핵심 쿼리 로딩 중 실제 레이아웃과 유사한 스켈레톤을 보여준다.
+
+### 공통 프리미티브 (`src/components/Skeleton.tsx`)
+
+```tsx
+export function Skeleton({ className = "" }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded-md bg-gray-200 ${className}`} />
+  );
+}
+```
+
+- 단일 컴포넌트만 존재 (`SkeletonText`/`SkeletonCircle` 등으로 세분화하지 않음 — YAGNI)
+- 페이지별 스켈레톤(`DashboardSkeleton`, `TrendSkeleton`, `TransactionsSkeleton`, `BudgetSkeleton`, `AssetsSkeleton`, `SettingsSkeleton`)은 `src/components/skeletons/`에 모아두고, 이 `Skeleton`을 조합해 실제 레이아웃 형태를 흉내낸다
+- feature 폴더(`dashboard/`, `trend/`, `assets/`)와 구분해 별도 폴더 유지
+
+### isLoading 조합 규칙
+
+```tsx
+const { data, isLoading: fooLoading } = useQuery({ ... });
+const { data, isLoading: barLoading } = useQuery({ ... });
+
+const isLoading = fooLoading || barLoading; // 핵심 쿼리만 OR로 결합
+
+if (isLoading) {
+  return <PageSkeleton />; // 반드시 모든 훅 호출 이후에 배치
+}
+```
+
+- **핵심 쿼리**의 `isLoading`만 OR로 묶는다. `isFetching`은 쓰지 않음 — 캐시된 데이터가 있는 상태에서 백그라운드 리페치 시 화면이 깜빡이는 것을 방지하기 위함
+- 전월 비교용 쿼리(`prevSummary`, `prevSnapshots` 등 보조 데이터)나 버튼 전용 `isPending`은 로딩 조건에서 제외한다 — 있으면 보여주고 없으면 그 부분만 생략하는 기존 방식 유지
+- early return(`if (isLoading) return ...`)은 반드시 그 컴포넌트의 **모든** 훅 호출(`useQuery`/`useMutation`/`useEffect`/`useMemo` 등) 이후에 위치시킨다 — 그렇지 않으면 React Hooks 규칙 위반으로 훅 순서가 깨짐
+
+적용 예: `app/home/dashboard/page.tsx`의 `isLoading = txLoading || catLoading || summaryLoading`, 동일 패턴이 `dashboard/trend`, `transactions`, `budget`, `assets`, `settings` 페이지에도 적용됨
+
 ## 거래 목록 UI 규칙
 
 ### 날짜 헤더 일별 합계 (`transactions/page.tsx`)
