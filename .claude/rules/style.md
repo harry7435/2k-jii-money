@@ -36,7 +36,9 @@
   - 날짜 칩: 선택된 날짜(`M월 d일 (EEE)`) 또는 "날짜 선택"
   - 시간 칩: 선택된 시간(`HH:mm`) 또는 "--:--"
 - 네이티브 `<input type="time">` 사용 금지 — 브라우저별 3열 휠 UI가 일관되지 않아 `ClockDial`로 대체됨
-- 날짜만 선택하고 시간을 비워둔 상태를 그대로 유지 — 과거처럼 날짜 선택 시 빈 시간을 `00:00`으로 자동 채우지 않음
+- 날짜 초기값 설정 방식에 따라 시간 필드가 다르게 동작한다:
+  - 사용자가 수동으로 날짜를 선택: 시간을 비워둔 상태 유지 (과거처럼 `00:00`으로 자동 채우지 않음)
+  - `AddTransactionModal`의 `initialDate` prop으로 프로그래매틱 설정: `initialDate`가 오늘이 아니면 `time`을 빈 값(`''`)으로 시작, 오늘이거나 없으면 현재 시각으로 채움 — 과거 날짜에 현재 시각을 그대로 저장하지 않기 위함
 
 ### ClockDial (`src/components/ClockDial.tsx`, `src/lib/utils/timeUtils.ts`)
 
@@ -120,3 +122,11 @@ if (isLoading) {
 | 저축 인출 (`amount < 0`) | `text-orange-500`                             |
 
 **레이블 스타일**: `text-[10px] font-semibold` — 금액 앞에 인라인 배치 (`수입` / `지출` / `저축`)
+
+### 날짜 헤더의 + 버튼 (해당 날짜로 바로 추가)
+
+날짜 텍스트 바로 오른쪽에 작은 `+` 버튼(`Plus size={14}`)을 배치 — 일별 합계(우측)와는 겹치지 않게 좌측 정렬. 클릭 시 `AddTransactionModal`이 해당 날짜가 미리 채워진 상태로 열려, FAB → 모달 → 날짜 재선택 없이 과거 날짜에 바로 거래를 추가할 수 있다.
+
+- `page.tsx`가 `initialDate: string | null` 상태를 가지고, 헤더 버튼 클릭 시 `setInitialDate(date)` + `setEditingTransaction(null)`로 신규 모드를 연다. FAB는 반대로 `setInitialDate(null)`로 오늘 기준 신규 모드를 연다
+- `AddTransactionModal`은 `initialDate?: string` prop을 받는다. `date` 초기값 우선순위는 `editingTransaction?.date` → `initialDate` → 오늘
+- `resetForm()`은 `date`를 건드리지 않는다 — 헤더 + 버튼으로 열어 연속 저장할 때 같은 날짜가 그대로 유지됨(의도된 동작)
