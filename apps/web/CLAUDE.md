@@ -101,6 +101,7 @@ pnpm test:run     # 1회 실행 (CI/검증용)
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+NEXT_PUBLIC_CLARITY_PROJECT_ID=xxxxxxxxxx  # 선택. 없으면 layout.tsx에서 Clarity 스크립트 자체를 렌더링하지 않음
 ```
 
 ## 주의사항
