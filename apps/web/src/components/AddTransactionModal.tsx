@@ -39,6 +39,8 @@ interface AddTransactionModalProps {
   categories: Category[];
   yearMonth: string;
   editingTransaction?: Transaction;
+  /** 신규 모드에서 미리 채울 날짜 (yyyy-MM-dd). 없으면 오늘 */
+  initialDate?: string;
   onClose: () => void;
 }
 
@@ -48,6 +50,7 @@ export function AddTransactionModal({
   categories,
   yearMonth,
   editingTransaction,
+  initialDate,
   onClose,
 }: AddTransactionModalProps) {
   const qc = useQueryClient();
@@ -96,11 +99,16 @@ export function AddTransactionModal({
       : "in",
   );
   const [date, setDate] = useState(
-    editingTransaction?.date ?? format(new Date(), "yyyy-MM-dd"),
+    editingTransaction?.date ?? initialDate ?? format(new Date(), "yyyy-MM-dd"),
   );
   const [time, setTime] = useState(() => {
     if (editingTransaction?.time) return editingTransaction.time;
-    if (!isEdit) return format(new Date(), "HH:mm");
+    if (!isEdit) {
+      // 과거 날짜에 추가할 때 현재 시각을 채우면 사실과 다른 값이 되므로 비워둔다
+      const isToday =
+        !initialDate || initialDate === format(new Date(), "yyyy-MM-dd");
+      return isToday ? format(new Date(), "HH:mm") : "";
+    }
     if (editingTransaction?.created_at)
       return format(parseISO(editingTransaction.created_at), "HH:mm");
     return "";

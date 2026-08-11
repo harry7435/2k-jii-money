@@ -70,6 +70,8 @@ function TransactionsPageInner() {
   const [showFilter, setShowFilter] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
+  /** 날짜 헤더의 + 버튼으로 열었을 때 모달에 미리 채울 날짜 */
+  const [initialDate, setInitialDate] = useState<string | null>(null);
 
   const filter = useMemo(() => parseFilter(searchParams), [searchParams]);
 
@@ -396,7 +398,20 @@ function TransactionsPageInner() {
           sortedDates.map((date) => (
             <div key={date}>
               <div className="px-4 py-1.5 bg-gray-50 text-xs text-gray-600 font-semibold flex items-center justify-between md:px-6 md:text-sm">
-                <span>{formatDate(date)}</span>
+                <span className="flex items-center gap-1">
+                  {formatDate(date)}
+                  <button
+                    onClick={() => {
+                      setEditingTransaction(null);
+                      setInitialDate(date);
+                      setShowModal(true);
+                    }}
+                    aria-label={`${formatDate(date)}에 내역 추가`}
+                    className="flex items-center justify-center w-5 h-5 rounded-full text-gray-400 hover:bg-gray-200 hover:text-teal-500 transition-colors"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </span>
                 {(() => {
                   const { income, expense, savings } = getDailyTotals(
                     grouped[date],
@@ -523,6 +538,7 @@ function TransactionsPageInner() {
       <button
         onClick={() => {
           setEditingTransaction(null);
+          setInitialDate(null);
           setShowModal(true);
         }}
         className="fixed bottom-20 right-4 w-14 h-14 bg-teal-400 rounded-full flex items-center justify-center shadow-lg md:bottom-8 md:right-8"
@@ -537,9 +553,11 @@ function TransactionsPageInner() {
           categories={categories}
           yearMonth={yearMonth}
           editingTransaction={editingTransaction ?? undefined}
+          initialDate={initialDate ?? undefined}
           onClose={() => {
             setShowModal(false);
             setEditingTransaction(null);
+            setInitialDate(null);
           }}
         />
       )}
