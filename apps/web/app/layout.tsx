@@ -1,13 +1,17 @@
-import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import "./globals.css";
-import { Providers } from "@/src/lib/providers";
+import type { Metadata } from 'next';
+import { Geist } from 'next/font/google';
+import Script from 'next/script';
+import { Analytics } from '@vercel/analytics/next';
+import './globals.css';
+import { Providers } from '@/src/lib/providers';
 
-const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
+const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
+
+const geist = Geist({ variable: '--font-geist', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "우리집 가계부",
-  description: "부부가 함께 관리하는 스마트 가계부",
+  title: '우리집 가계부',
+  description: '부부가 함께 관리하는 스마트 가계부',
 };
 
 export default function RootLayout({
@@ -39,6 +43,16 @@ export default function RootLayout({
       </head>
       <body className={`${geist.variable} font-sans antialiased bg-gray-50`}>
         <Providers>{children}</Providers>
+        <Analytics />
+        {CLARITY_PROJECT_ID && (
+          <Script id="clarity" strategy="afterInteractive">
+            {`(function(c,l,a,r,i,t,y){
+              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");`}
+          </Script>
+        )}
       </body>
     </html>
   );
