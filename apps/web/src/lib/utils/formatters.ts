@@ -82,3 +82,31 @@ export function monthDateRange(yearMonth: string): {
   const to = format(nextDate, "yyyy-MM-dd");
   return { from, to };
 }
+
+/**
+ * 자산 스냅샷의 마지막 수정 시각 표기.
+ * 올해면 "8월 24일", 다른 해면 "2025년 11월 3일".
+ */
+export function formatUpdatedAt(
+  updatedAt: string | null | undefined,
+  reference: Date = new Date(),
+): string | null {
+  if (!updatedAt) return null;
+  const d = parseISO(updatedAt);
+  const pattern =
+    d.getFullYear() === reference.getFullYear()
+      ? "M월 d일"
+      : "yyyy년 M월 d일";
+  return format(d, pattern, { locale: ko });
+}
+
+export type DeltaState = "none" | "new" | "same" | "changed";
+
+/**
+ * 전월 대비 표시 종류.
+ * prev가 0이면 증감률을 낼 수 없어 비교 대신 '신규'로 다룬다.
+ */
+export function deltaState(current: number, prev: number): DeltaState {
+  if (prev === 0) return current === 0 ? "none" : "new";
+  return current === prev ? "same" : "changed";
+}

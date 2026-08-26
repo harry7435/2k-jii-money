@@ -25,9 +25,9 @@ import {
   formatCurrency,
   formatYearMonth,
   prevMonth,
-  calcDelta,
 } from "@/src/lib/utils/formatters";
 import { findMiddleCategory } from "@/src/lib/utils/categoryUtils";
+import { DeltaLine } from "@/src/components/DeltaLine";
 import { MonthSelector } from "@/src/components/MonthSelector";
 import { MonthlyNoteCard } from "@/src/components/dashboard/MonthlyNoteCard";
 import { SummarySection } from "@/src/components/dashboard/SummarySection";
@@ -37,35 +37,6 @@ import { EvaluationReport } from "@/src/components/dashboard/EvaluationReport";
 import { DashboardSkeleton } from "@/src/components/skeletons/DashboardSkeleton";
 
 // 전월 대비 증감 한 줄. 전월 기록이 없으면(0) 표시하지 않음.
-// 색상 의미론: 지출은 증가가 나쁨(빨강), 수입·저축은 증가가 좋음(파랑)
-function DeltaLine({
-  current,
-  prev,
-  positiveIsGood,
-}: {
-  current: number;
-  prev: number;
-  positiveIsGood: boolean;
-}) {
-  if (prev === 0) return null;
-  const { diff, pct } = calcDelta(current, prev);
-  if (diff === 0) {
-    return <p className="text-[10px] text-gray-400 mt-0.5">전월과 동일</p>;
-  }
-  const up = diff > 0;
-  const good = up === positiveIsGood;
-  return (
-    <p
-      className={`text-[10px] font-semibold mt-0.5 ${
-        good ? "text-blue-500" : "text-red-500"
-      }`}
-    >
-      {up ? "▲" : "▼"} {Math.abs(diff).toLocaleString("ko-KR")}
-      {pct !== null && ` (${up ? "+" : "-"}${Math.abs(pct)}%)`}
-    </p>
-  );
-}
-
 export default function DashboardPage() {
   const { family } = useFamilyStore();
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
