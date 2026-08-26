@@ -8,12 +8,13 @@ import {
   upsertAssetSnapshot,
   deleteAssetAccount,
 } from "@/src/lib/supabase/queries";
-import type { AssetAccount } from "@2k-jii-money/supabase-types";
+import type { AssetAccount, AssetSnapshot } from "@2k-jii-money/supabase-types";
+import { formatUpdatedAt } from "@/src/lib/utils/formatters";
 
 interface EditAccountModalProps {
   familyId: string;
   account: AssetAccount;
-  currentAmount: number;
+  snapshot: AssetSnapshot | null;
   yearMonth: string;
   onClose: () => void;
 }
@@ -21,15 +22,16 @@ interface EditAccountModalProps {
 export function EditAccountModal({
   familyId,
   account,
-  currentAmount,
+  snapshot,
   yearMonth,
   onClose,
 }: EditAccountModalProps) {
   const qc = useQueryClient();
   const [name, setName] = useState(account.name);
   const [amount, setAmount] = useState(
-    currentAmount ? currentAmount.toLocaleString("ko-KR") : "",
+    snapshot?.amount ? snapshot.amount.toLocaleString("ko-KR") : "",
   );
+  const lastUpdated = formatUpdatedAt(snapshot?.updated_at);
 
   const handleAmountChange = (v: string) => {
     const digits = v.replace(/[^0-9]/g, "");
@@ -101,6 +103,11 @@ export function EditAccountModal({
             />
             <span className="ml-1 text-gray-600">원</span>
           </div>
+          <p className="text-[11px] text-gray-400 mt-1.5">
+            {lastUpdated
+              ? `마지막 업데이트 ${lastUpdated}`
+              : "아직 기록 없음"}
+          </p>
         </div>
 
         <button

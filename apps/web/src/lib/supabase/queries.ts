@@ -856,25 +856,45 @@ export async function upsertMonthlyNote(
 
 export async function getAssetSnapshotHistory(
   familyId: string,
-  months: number,
+  fromYearMonth: string,
+  toYearMonth: string,
 ): Promise<AssetSnapshot[]> {
   const supabase = createClient();
-  // 최근 N개월의 year_month 목록 생성
-  const monthList: string[] = [];
-  const now = new Date();
-  for (let i = 0; i < months; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    monthList.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-    );
-  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("asset_snapshots")
     .select()
     .eq("family_id", familyId)
-    .in("year_month", monthList)
-    .order("year_month");
+    .gte("year_month", fromYearMonth)
+    .lte("year_month", toYearMonth)
+    .order("year_month")
+    .range(0, 19999);
   if (error) throw error;
   return (data ?? []) as AssetSnapshot[];
+}
+
+/**
+ * 자산 탭의 저축 추이용. 거래 전체가 아니라 type='savings'만 가져온다.
+ * 다월 조회라 PostgREST 기본 1000행 제한을 넘길 수 있어 range를 명시.
+ */
+export async function getSavingsHistory(
+  familyId: string,
+  fromYearMonth: string,
+  toYearMonth: string,
+): Promise<Transaction[]> {
+  const supabase = createClient();
+  const { from } = monthDateRange(fromYearMonth);
+  const { to } = monthDateRange(toYearMonth);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("transactions")
+    .select()
+    .eq("family_id", familyId)
+    .eq("type", "savings")
+    .gte("date", from)
+    .lt("date", to)
+    .order("date", { ascending: true })
+    .range(0, 19999);
+  if (error) throw error;
+  return (data ?? []) as Transaction[];
 }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useFamilyStore } from "@/src/lib/store/familyStore";
 import {
   getAssetAccounts,
   getAssetSnapshots,
   getAssetSnapshotHistory,
+  getSavingsHistory,
   upsertAssetSnapshot,
   createDefaultAssetAccounts,
 } from "@/src/lib/supabase/queries";
@@ -17,9 +18,17 @@ import {
   prevMonth,
 } from "@/src/lib/utils/formatters";
 import { MonthSelector } from "@/src/components/MonthSelector";
+import { MonthRangeSelector } from "@/src/components/MonthRangeSelector";
 import { AddAccountModal } from "@/src/components/assets/AddAccountModal";
 import { EditAccountModal } from "@/src/components/assets/EditAccountModal";
 import { AssetTrendChart } from "@/src/components/assets/AssetTrendChart";
+import { SavingsTrendChart } from "@/src/components/assets/SavingsTrendChart";
+import { AssetComparisonModal } from "@/src/components/assets/AssetComparisonModal";
+import {
+  buildMonthList,
+  buildMonthRange,
+  aggregateMonthlySavings,
+} from "@/src/lib/utils/trendUtils";
 import {
   ASSET_ACCOUNT_TYPE_MAP,
   ASSET_TYPE_ORDER,
@@ -33,6 +42,12 @@ export default function AssetsPage() {
   const qc = useQueryClient();
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  // 차트 범위. 기본값은 최근 12개월 — 상단 월 선택기와는 독립적으로 움직인다
+  const [range, setRange] = useState(() => {
+    const recent = buildMonthList(12);
+    return { from: recent[0], to: recent[recent.length - 1] };
+  });
   const [editingAccount, setEditingAccount] = useState<AssetAccount | null>(
     null,
   );
@@ -54,10 +69,22 @@ export default function AssetsPage() {
   });
 
   const { data: history = [], isLoading: historyLoading } = useQuery({
-    queryKey: ["assetSnapshotHistory", familyId],
-    queryFn: () => getAssetSnapshotHistory(familyId, 12),
+    queryKey: ["assetSnapshotHistory", familyId, range.from, range.to],
+    queryFn: () => getAssetSnapshotHistory(familyId, range.from, range.to),
     enabled: !!familyId,
   });
+
+  const { data: savingsTx = [], isLoading: savingsLoading } = useQuery({
+    queryKey: ["savingsHistory", familyId, range.from, range.to],
+    queryFn: () => getSavingsHistory(familyId, range.from, range.to),
+    enabled: !!familyId,
+  });
+
+  const savingsByMonth = useMemo(
+    () =>
+      aggregateMonthlySavings(savingsTx, buildMonthRange(range.from, range.to)),
+    [savingsTx, range.from, range.to],
+  );
 
   // 기존 가족인데 asset_accounts가 없으면 자동 생성
   const initMutation = useMutation({
@@ -79,7 +106,7 @@ export default function AssetsPage() {
   const { data: prevSnapshots = [] } = useQuery({
     queryKey: ["assetSnapshots", familyId, prevYearMonth],
     queryFn: () => getAssetSnapshots(familyId, prevYearMonth),
-    enabled: !!familyId && snapshots.length === 0,
+    enabled: !!familyId,
   });
 
   const copyMutation = useMutation({
@@ -96,7 +123,8 @@ export default function AssetsPage() {
     },
   });
 
-  const isLoading = accountsLoading || snapshotsLoading || historyLoading;
+  const isLoading =
+    accountsLoading || snapshotsLoading || historyLoading || savingsLoading;
 
   if (isLoading) {
     return (
@@ -109,8 +137,10 @@ export default function AssetsPage() {
     );
   }
 
-  // 스냅샷 맵: account_id → amount
-  const snapshotMap = new Map(snapshots.map((s) => [s.account_id, s.amount]));
+  // 스냅샷 맵: account_id → 스냅샷 (금액과 마지막 수정 시각을 함께 쓴다)
+  const snapshotMap = new Map(snapshots.map((s) => [s.account_id, s]));
+  const amountOf = (accountId: string) =>
+    snapshotMap.get(accountId)?.amount ?? 0;
 
   // 타입별 그룹핑
   const groupedAccounts = ASSET_TYPE_ORDER.map((type) => ({
@@ -122,10 +152,10 @@ export default function AssetsPage() {
   // 합계 계산
   const assetTotal = accounts
     .filter((a) => a.account_type !== "liability")
-    .reduce((sum, a) => sum + (snapshotMap.get(a.id) ?? 0), 0);
+    .reduce((sum, a) => sum + amountOf(a.id), 0);
   const liabilityTotal = accounts
     .filter((a) => a.account_type === "liability")
-    .reduce((sum, a) => sum + (snapshotMap.get(a.id) ?? 0), 0);
+    .reduce((sum, a) => sum + amountOf(a.id), 0);
   const netWorth = assetTotal - liabilityTotal;
 
   return (
@@ -157,6 +187,17 @@ export default function AssetsPage() {
           </div>
         </div>
 
+        {/* 전월 대비 변화 */}
+        <button
+          onClick={() => setShowComparison(true)}
+          className="w-full flex items-center justify-center gap-1 py-2.5 rounded-xl bg-white text-sm font-medium text-gray-600 active:bg-gray-50"
+        >
+          <span className="material-symbols-outlined text-lg">
+            compare_arrows
+          </span>
+          전월 대비 변화
+        </button>
+
         {/* 지난달 복사 버튼 */}
         {snapshots.length === 0 && prevSnapshots.length > 0 && (
           <button
@@ -173,7 +214,7 @@ export default function AssetsPage() {
         {/* 계좌 그룹 목록 */}
         {groupedAccounts.map((group) => {
           const groupTotal = group.accounts.reduce(
-            (sum, a) => sum + (snapshotMap.get(a.id) ?? 0),
+            (sum, a) => sum + amountOf(a.id),
             0,
           );
           return (
@@ -195,7 +236,7 @@ export default function AssetsPage() {
 
               {/* 계좌 행 */}
               {group.accounts.map((account) => {
-                const amount = snapshotMap.get(account.id) ?? 0;
+                const amount = amountOf(account.id);
 
                 return (
                   <button
@@ -226,7 +267,13 @@ export default function AssetsPage() {
         </button>
 
         {/* 추세 차트 */}
+        <MonthRangeSelector
+          from={range.from}
+          to={range.to}
+          onChange={(from, to) => setRange({ from, to })}
+        />
         <AssetTrendChart snapshots={history} accounts={accounts} />
+        <SavingsTrendChart data={savingsByMonth} />
 
         <p className="text-center text-xs text-gray-500 pb-2">
           {formatYearMonth(yearMonth)} 자산 현황
@@ -240,11 +287,22 @@ export default function AssetsPage() {
         />
       )}
 
+      {showComparison && (
+        <AssetComparisonModal
+          accounts={accounts}
+          snapshots={snapshots}
+          prevSnapshots={prevSnapshots}
+          yearMonth={yearMonth}
+          prevYearMonth={prevYearMonth}
+          onClose={() => setShowComparison(false)}
+        />
+      )}
+
       {editingAccount && (
         <EditAccountModal
           familyId={familyId}
           account={editingAccount}
-          currentAmount={snapshotMap.get(editingAccount.id) ?? 0}
+          snapshot={snapshotMap.get(editingAccount.id) ?? null}
           yearMonth={yearMonth}
           onClose={() => setEditingAccount(null)}
         />
