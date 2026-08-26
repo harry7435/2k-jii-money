@@ -6,6 +6,8 @@ import {
   summarizeMiddleCategories,
   aggregateMonthlyBySelectedCategories,
   aggregateMonthlyEvaluation,
+  buildMonthRange,
+  aggregateMonthlySavings,
 } from "./trendUtils";
 
 const REF = new Date(2026, 3, 15); // 2026-04-15 (month is 0-based)
@@ -415,5 +417,79 @@ describe("aggregateMonthlyEvaluation", () => {
     for (const row of result) {
       expect(row.consumption + row.waste + row.investment).toBe(0);
     }
+  });
+});
+
+describe("buildMonthRange", () => {
+  it("returns every month from start to end inclusive", () => {
+    expect(buildMonthRange("2026-01", "2026-04")).toEqual([
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+    ]);
+  });
+
+  it("crosses year boundaries", () => {
+    expect(buildMonthRange("2025-11", "2026-02")).toEqual([
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+    ]);
+  });
+
+  it("returns a single month when start equals end", () => {
+    expect(buildMonthRange("2026-04", "2026-04")).toEqual(["2026-04"]);
+  });
+
+  it("returns an empty array when start is after end", () => {
+    expect(buildMonthRange("2026-05", "2026-04")).toEqual([]);
+  });
+});
+
+describe("aggregateMonthlySavings", () => {
+  const months = ["2026-02", "2026-03", "2026-04"];
+
+  it("sums savings transactions per month", () => {
+    const txs = [
+      makeTransaction({ type: "savings", amount: 300_000, date: "2026-03-05" }),
+      makeTransaction({ type: "savings", amount: 200_000, date: "2026-03-20" }),
+      makeTransaction({ type: "savings", amount: 500_000, date: "2026-04-01" }),
+    ];
+    expect(aggregateMonthlySavings(txs, months)).toEqual([
+      { month: "2026-02", amount: 0 },
+      { month: "2026-03", amount: 500_000 },
+      { month: "2026-04", amount: 500_000 },
+    ]);
+  });
+
+  it("nets withdrawals against deposits in the same month", () => {
+    const txs = [
+      makeTransaction({ type: "savings", amount: 500_000, date: "2026-04-02" }),
+      makeTransaction({ type: "savings", amount: -800_000, date: "2026-04-09" }),
+    ];
+    const result = aggregateMonthlySavings(txs, months);
+    expect(result[2]).toEqual({ month: "2026-04", amount: -300_000 });
+  });
+
+  it("ignores income and expense transactions", () => {
+    const txs = [
+      makeTransaction({ type: "income", amount: 900_000, date: "2026-03-01" }),
+      makeTransaction({ type: "expense", amount: 100_000, date: "2026-03-02" }),
+    ];
+    expect(aggregateMonthlySavings(txs, months)).toEqual([
+      { month: "2026-02", amount: 0 },
+      { month: "2026-03", amount: 0 },
+      { month: "2026-04", amount: 0 },
+    ]);
+  });
+
+  it("ignores transactions outside the month list", () => {
+    const txs = [
+      makeTransaction({ type: "savings", amount: 700_000, date: "2025-12-15" }),
+    ];
+    const result = aggregateMonthlySavings(txs, months);
+    expect(result.every((r) => r.amount === 0)).toBe(true);
   });
 });

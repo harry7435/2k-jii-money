@@ -174,3 +174,38 @@ export function aggregateMonthlyEvaluation(
   }
   return monthList.map((m) => map.get(m)!);
 }
+
+/** from~to(포함) 사이의 yearMonth 배열을 오름차순으로 반환. from > to면 빈 배열. */
+export function buildMonthRange(from: string, to: string): string[] {
+  const [fromY, fromM] = from.split("-").map(Number);
+  const [toY, toM] = to.split("-").map(Number);
+  const list: string[] = [];
+  const cursor = new Date(fromY, fromM - 1, 1);
+  const end = new Date(toY, toM - 1, 1);
+  while (cursor <= end) {
+    list.push(format(cursor, "yyyy-MM"));
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return list;
+}
+
+export interface MonthlySavings {
+  month: string;
+  amount: number;
+}
+
+/** 월별 저축 합계. 인출(음수)은 상계되고, 거래가 없는 달은 0. */
+export function aggregateMonthlySavings(
+  transactions: Transaction[],
+  monthList: string[],
+): MonthlySavings[] {
+  const map = new Map<string, number>();
+  for (const m of monthList) map.set(m, 0);
+  for (const t of transactions) {
+    if (t.type !== "savings") continue;
+    const ym = txYearMonth(t);
+    if (!map.has(ym)) continue;
+    map.set(ym, map.get(ym)! + t.amount);
+  }
+  return monthList.map((m) => ({ month: m, amount: map.get(m)! }));
+}
