@@ -53,3 +53,7 @@ apps/web/out/
 # oh-my-claudecode
 .omc/
 .superpowers/
+
+# Claude Code 로컬 산출물 (개인 메모·플랜은 저장소에 두지 않는다)
+.claude/projects/
+.claude/plans/
