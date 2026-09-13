@@ -33,6 +33,9 @@ import {
   RECENT_CATEGORIES_MAX,
 } from "@/src/lib/utils/recentCategories";
 
+// 대부분의 지출이 '소비'라서 신규 입력 시 미리 선택해 둔다 (지출평가는 지출 필수값)
+const DEFAULT_EVALUATION: EvaluationType = "consumption";
+
 interface AddTransactionModalProps {
   familyId: string;
   memberId: string;
@@ -118,7 +121,9 @@ export function AddTransactionModal({
     editingTransaction?.payment_source_id ?? "",
   );
   const [evaluation, setEvaluation] = useState<EvaluationType | "">(
-    editingTransaction?.evaluation ?? "",
+    editingTransaction
+      ? (editingTransaction.evaluation ?? "")
+      : DEFAULT_EVALUATION,
   );
 
   const [savedCount, setSavedCount] = useState(0);
@@ -172,14 +177,14 @@ export function AddTransactionModal({
     setTime("");
     setMemo("");
     setPaymentSourceId("");
-    setEvaluation("");
+    setEvaluation(DEFAULT_EVALUATION);
     setSavingsDirection("in");
   }, []);
 
   const applyRecentPath = useCallback(
     (path: Category[]) => {
       if (path[0].id !== majorCatId) {
-        setEvaluation("");
+        setEvaluation(DEFAULT_EVALUATION);
         setSavingsDirection("in");
       }
       setSelectedMajorCatId(path[0].id);
@@ -334,7 +339,7 @@ export function AddTransactionModal({
                   setSelectedMajorCatId(mc.id);
                   setMiddleCatId("");
                   setSubCatId("");
-                  setEvaluation("");
+                  setEvaluation(DEFAULT_EVALUATION);
                   setSavingsDirection("in");
                 }}
                 className={`flex-1 py-2 text-sm font-semibold transition-colors ${
