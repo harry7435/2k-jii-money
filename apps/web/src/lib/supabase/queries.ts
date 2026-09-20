@@ -211,24 +211,24 @@ export async function getCurrentMembership(): Promise<{
   const user = sessionData.session?.user;
   if (!user) return null;
 
+  // members와 families를 한 번에 받는다. 예전에는 두 쿼리를 순차로 보냈는데,
+  // 두 번째가 첫 번째의 family_id를 기다리므로 왕복이 직렬로 쌓였다. 이 구간이
+  // 곧 홈 레이아웃이 스켈레톤을 띄우고 있는 시간이라 왕복 하나가 그대로 체감된다.
+  //
   // 에러를 삼키면 안 된다. RLS나 GRANT가 잘못됐을 때 "가족 없음"과 구분이 안 되고,
   // 화면에는 아무것도 안 뜨는데 콘솔도 조용해서 원인을 찾을 수가 없다.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: member, error: memberError } = await (supabase as any)
+  const { data: row, error: memberError } = await (supabase as any)
     .from("members")
-    .select()
+    .select("*, families(*)")
     .eq("user_id", user.id)
     .maybeSingle();
   if (memberError) throw memberError;
-  if (!member) return null;
+  if (!row) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: family, error: familyError } = await (supabase as any)
-    .from("families")
-    .select()
-    .eq("id", member.family_id)
-    .maybeSingle();
-  if (familyError) throw familyError;
+  // PostgREST는 to-one 관계를 객체로 주지만 버전에 따라 배열로 오기도 해서 둘 다 받는다.
+  const { families, ...member } = row;
+  const family = Array.isArray(families) ? families[0] : families;
   if (!family) {
     // 멤버 행은 보이는데 가족이 안 보인다 = families SELECT 정책이나 GRANT 문제.
     throw new Error(
