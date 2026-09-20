@@ -90,21 +90,23 @@ export function Skeleton({ className = "" }: { className?: string }) {
 ### isLoading 조합 규칙
 
 ```tsx
-const { data, isLoading: fooLoading } = useQuery({ ... });
-const { data, isLoading: barLoading } = useQuery({ ... });
+const familyId = family?.id ?? "";
+const { data, isLoading: fooLoading } = useQuery({ ..., enabled: !!familyId });
+const { data, isLoading: barLoading } = useQuery({ ..., enabled: !!familyId });
 
-const isLoading = fooLoading || barLoading; // 핵심 쿼리만 OR로 결합
+const isLoading = !familyId || fooLoading || barLoading;
 
 if (isLoading) {
   return <PageSkeleton />; // 반드시 모든 훅 호출 이후에 배치
 }
 ```
 
+- **`!familyId`를 반드시 첫 항으로 넣는다.** `app/home/layout.tsx`는 membership을 기다리는 동안 셸만 그리고 페이지를 그대로 렌더하므로, `family`가 아직 없는 구간이 사용자에게 보인다. 이때 쿼리는 `enabled: false`라 React Query v5에서 **`isLoading`이 `false`** 로 나온다(`isLoading = isPending && isFetching`). 빼먹으면 스켈레톤 대신 "내역이 없습니다" 같은 빈 상태가 잠깐 번쩍인다 — 배경은 `.claude/rules/zustand-hydration.md`
 - **핵심 쿼리**의 `isLoading`만 OR로 묶는다. `isFetching`은 쓰지 않음 — 캐시된 데이터가 있는 상태에서 백그라운드 리페치 시 화면이 깜빡이는 것을 방지하기 위함
 - 전월 비교용 쿼리(`prevSummary`, `prevSnapshots` 등 보조 데이터)나 버튼 전용 `isPending`은 로딩 조건에서 제외한다 — 있으면 보여주고 없으면 그 부분만 생략하는 기존 방식 유지
 - early return(`if (isLoading) return ...`)은 반드시 그 컴포넌트의 **모든** 훅 호출(`useQuery`/`useMutation`/`useEffect`/`useMemo` 등) 이후에 위치시킨다 — 그렇지 않으면 React Hooks 규칙 위반으로 훅 순서가 깨짐
 
-적용 예: `app/home/dashboard/page.tsx`의 `isLoading = txLoading || catLoading || summaryLoading`, 동일 패턴이 `dashboard/trend`, `transactions`, `budget`, `assets`, `settings` 페이지에도 적용됨
+적용 예: `app/home/dashboard/page.tsx`의 `isLoading = !familyId || txLoading || catLoading || summaryLoading`, 동일 패턴이 `dashboard/trend`, `transactions`, `budget`, `assets`, `settings` 페이지에도 적용됨 (`settings`는 `family`·`member`를 직접 쓰므로 `!family || !member`로 판정)
 
 ## 거래 목록 UI 규칙
 
