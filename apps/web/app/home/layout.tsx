@@ -23,7 +23,6 @@ export default function HomeLayout({
 }) {
   const pathname = usePathname();
   const qc = useQueryClient();
-  const family = useFamilyStore((s) => s.family);
   const setFamily = useFamilyStore((s) => s.setFamily);
   const setMember = useFamilyStore((s) => s.setMember);
 
@@ -67,7 +66,7 @@ export default function HomeLayout({
     return () => subscription.unsubscribe();
   }, [qc]);
 
-  // 아래 세 분기는 전부 "아무것도 안 뜨는 화면"을 막기 위한 것이다.
+  // 아래 두 분기는 "아무것도 안 뜨는 화면"을 막기 위한 것이다.
   // 예전에는 조회가 실패해도 null을 반환해 원인 없이 검은 화면만 남았다.
   if (error) {
     return (
@@ -78,13 +77,9 @@ export default function HomeLayout({
     );
   }
 
-  if (isPending) {
-    return (
-      <StatusScreen title="불러오는 중..." detail="잠시만 기다려 주세요." />
-    );
-  }
-
-  if (!membership) {
+  // isPending 중에는 membership이 undefined다. 그걸 "가족 없음"으로 읽으면
+  // 로딩 중에 온보딩 안내가 번쩍이므로 판정을 조회가 끝난 뒤로 미룬다.
+  if (!isPending && !membership) {
     return (
       <StatusScreen
         title="아직 가족에 속해 있지 않습니다"
@@ -94,8 +89,9 @@ export default function HomeLayout({
     );
   }
 
-  if (!family) return null;
-
+  // membership을 기다리는 동안 전체를 텍스트 화면으로 막지 않는다. 탭바까지 사라지면
+  // 실제 소요와 무관하게 훨씬 느리게 느껴진다. 로딩 표시는 각 페이지의 스켈레톤이 맡고,
+  // 페이지들은 familyId가 빌 동안을 로딩으로 취급한다.
   return (
     <div className="flex flex-col md:flex-row min-h-screen max-w-md md:max-w-none mx-auto bg-white">
       {/* Sidebar navigation (desktop) / Bottom navigation (mobile) */}

@@ -67,7 +67,7 @@ export default function DashboardPage() {
     enabled: !!familyId,
   });
 
-  const isLoading = txLoading || catLoading || summaryLoading;
+  const isLoading = !familyId || txLoading || catLoading || summaryLoading;
 
   if (isLoading) {
     return (

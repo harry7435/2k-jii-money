@@ -124,7 +124,11 @@ export default function AssetsPage() {
   });
 
   const isLoading =
-    accountsLoading || snapshotsLoading || historyLoading || savingsLoading;
+    !familyId ||
+    accountsLoading ||
+    snapshotsLoading ||
+    historyLoading ||
+    savingsLoading;
 
   if (isLoading) {
     return (

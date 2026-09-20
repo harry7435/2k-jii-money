@@ -271,8 +271,14 @@ function TransactionsPageInner() {
     return { income, expense, savings };
   }, [isFiltered, filteredTransactions, summary]);
 
+  // familyId가 빌 동안(membership 조회 중)도 로딩이다. 이때 쿼리는 enabled:false라
+  // isLoading이 false로 나오므로, 빼먹으면 "내역이 없습니다"가 잠깐 번쩍인다.
   const isLoading =
-    txLoading || catLoading || membersLoading || paymentSourcesLoading;
+    !familyId ||
+    txLoading ||
+    catLoading ||
+    membersLoading ||
+    paymentSourcesLoading;
 
   if (isLoading) {
     return (

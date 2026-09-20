@@ -239,9 +239,11 @@ export default function SettingsPage() {
     resetMutation.mutate();
   }
 
-  const isLoading = catLoading || membersLoading || paymentSourcesLoading;
+  // family·member가 아직 없는 구간도 로딩이다. 예전에는 null을 반환해 화면이
+  // 통째로 비었는데, 이제 이 구간이 사용자에게 보이므로 스켈레톤을 띄운다.
+  const isLoading =
+    !family || !member || catLoading || membersLoading || paymentSourcesLoading;
 
-  if (!family || !member) return null;
   if (isLoading) return <SettingsSkeleton />;
 
   return (

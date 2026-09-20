@@ -43,7 +43,7 @@ export default function BudgetPage() {
     enabled: !!familyId,
   });
 
-  const isLoading = budgetsLoading || catLoading || txLoading;
+  const isLoading = !familyId || budgetsLoading || catLoading || txLoading;
 
   if (isLoading) {
     return (

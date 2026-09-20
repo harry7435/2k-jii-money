@@ -75,7 +75,7 @@ export default function TrendPage() {
 
   const hasData = transactions.length > 0;
 
-  if (txLoading) {
+  if (!familyId || txLoading) {
     return (
       <div className="flex flex-col h-full">
         <header className="flex items-center gap-2 px-3 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
