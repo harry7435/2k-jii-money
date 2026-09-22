@@ -110,3 +110,4 @@ NEXT_PUBLIC_CLARITY_PROJECT_ID=xxxxxxxxxx  # 선택. 없으면 layout.tsx에서 
 - 인증은 Supabase Auth(이메일 + 비밀번호). 라우트 가드는 `proxy.ts`에서 서버 측으로 처리한다
 - `anon` 역할에는 DB 권한이 없다. 데이터 격리는 `my_family_id()` 기반 RLS가 담당 — 자세한 내용은 `.claude/rules/supabase.md`
 - 타입 에러 발생 시 `as any` 캐스팅보다 타입 단언 방식 선호
+- `getMonthlySummary()`는 내부에서 `getTransactions()`를 다시 호출해 합계를 계산한다. `dashboard/page.tsx`, `transactions/page.tsx`처럼 같은 화면에서 `getTransactions`와 `getMonthlySummary`를 같은 `yearMonth`로 함께 쓰면 해당 월 거래를 중복 조회하게 된다 — 알려진 비효율이며 아직 의도적으로 미해결 상태(별도 이슈로 분리)
