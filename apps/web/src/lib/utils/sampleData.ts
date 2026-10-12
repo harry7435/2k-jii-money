@@ -243,8 +243,8 @@ const INCOME_PATTERNS: readonly {
   max: number;
   day: number;
 }[] = [
-  { path: ["익준급여"], memo: "월급", min: 3150000, max: 3250000, day: 25 },
-  { path: ["현지급여"], memo: "월급", min: 2700000, max: 2800000, day: 25 },
+  { path: ["급여"], memo: "월급", min: 3150000, max: 3250000, day: 25 },
+  { path: ["배우자급여"], memo: "월급", min: 2700000, max: 2800000, day: 25 },
 ];
 
 const SAVINGS_PATTERNS: readonly {

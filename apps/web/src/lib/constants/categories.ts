@@ -16,8 +16,13 @@ export const DEFAULT_CATEGORY_TREE: CategoryNode[] = [
     color: "#82E0AA",
     isDefault: true,
     children: [
-      { name: "익준급여", icon: "payments", color: "#82E0AA", isDefault: true },
-      { name: "현지급여", icon: "payments", color: "#82E0AA", isDefault: true },
+      { name: "급여", icon: "payments", color: "#82E0AA", isDefault: true },
+      {
+        name: "배우자급여",
+        icon: "payments",
+        color: "#82E0AA",
+        isDefault: true,
+      },
       {
         name: "금융수입",
         icon: "account_balance",
@@ -83,7 +88,7 @@ export const DEFAULT_CATEGORY_TREE: CategoryNode[] = [
           },
           { name: "간식", icon: "cookie", color: "#FF6B6B", isDefault: true },
           {
-            name: "현지 커피",
+            name: "커피",
             icon: "coffee",
             color: "#FF6B6B",
             isDefault: true,
@@ -95,13 +100,13 @@ export const DEFAULT_CATEGORY_TREE: CategoryNode[] = [
             isDefault: true,
           },
           {
-            name: "익준 개인",
+            name: "개인식비",
             icon: "person",
             color: "#FF6B6B",
             isDefault: true,
           },
           {
-            name: "현지 개인",
+            name: "배우자식비",
             icon: "person",
             color: "#FF6B6B",
             isDefault: true,

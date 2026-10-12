@@ -64,7 +64,7 @@ export function AddAccountModal({ familyId, onClose }: AddAccountModalProps) {
           <label className="text-xs text-gray-600 mb-1 block">계좌명</label>
           <input
             type="text"
-            placeholder="예: 국민은행(익준), 토스증권"
+            placeholder="예: 국민은행(급여통장), 토스증권"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-teal-400"
