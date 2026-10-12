@@ -22,6 +22,31 @@ membership → 데이터 순으로 왕복이 직렬로 쌓인다(각각 CORS pre
 - `take()`는 한 번만 값을 준다. 이후 리페치는 평소 경로로 간다
 - 진입 화면이 아닌 페이지에는 적용하지 않았다 — 탭 전환 시에는 `familyId`가 이미 있어 이득이 없다
 
+### 측정 근거와 한계 (2026-10-12)
+
+- **DB 쿼리 자체는 1~7ms다** (`EXPLAIN ANALYZE`). `family_id` 필터 없이 RLS만으로 좁혀도 `idx_transactions_family_date`를 타고, `my_family_id()`는 Index Cond로 한 번만 평가된다. 그래서 정책을 `(select my_family_id())`로 감싸는 최적화는 필요 없었다
+- **병목은 요청 왕복이다.** Supabase의 서버 응답 대기는 단독 약 0.3~0.4초, 5개 동시 약 0.55~0.64초였다. DB가 아니라 API 계층(게이트웨이·PostgREST)에서 쓰이는 시간이고, 동시 요청이 많을수록 전부 느려진다
+- **개발 모드 수치는 부풀려진다.** StrictMode가 `useState` 초기화를 두 번 실행해 먼저 보내는 요청이 두 벌 나간다(9개 동시, 약 1.8초). 운영 빌드에서는 한 벌이다
+- 리전 불일치는 아니다 — Vercel은 `icn1`에서 응답하고 Supabase 왕복도 90ms대다
+- React Query 캐시를 localStorage에 저장하는 방안은 쓰지 않기로 했다. 가계부 데이터가 기기에 남는 것을 피하기 위해서다
+- 남은 후보: 첫 화면 요청 5개(membership + 조회 4개)를 RPC 하나로 합치기. 운영 기준 예상 이득이 0.2~0.4초라 보류했다
+
+### 다시 측정할 때 쓰는 방법
+
+로그인 사용자 요청의 응답 시간 — 아래를 터미널에서 실행해 두고, 크롬 Network 탭에서 요청을 우클릭 → Copy as cURL 한 뒤 Enter. `0.000000`은 무시한다.
+
+```sh
+read "?크롬에서 Copy as cURL 한 뒤 여기서 Enter: "; for i in 1 2 3 4 5; do eval "$(pbpaste) -s -o /dev/null -w '%{time_starttransfer}\n'" 2>/dev/null & done; wait
+```
+
+RLS를 거치는 실행 계획 — Supabase SQL Editor에서 한 번에 실행한다. SQL Editor는 RLS를 우회하는 역할로 돌기 때문에 `authenticated`로 바꿔야 실제 경로가 재현된다.
+
+```sql
+select set_config('request.jwt.claims', json_build_object('sub', (select user_id from members where family_id = '<가족 ID>' and user_id is not null limit 1), 'role', 'authenticated')::text, true);
+set local role authenticated;
+explain (analyze, buffers) select * from transactions where date >= '2026-10-01' and date < '2026-11-01' order by date desc, created_at desc;
+```
+
 ## PostgREST row limit
 
 - Supabase REST(PostgREST)는 **기본 1000행** limit이 걸려 있다

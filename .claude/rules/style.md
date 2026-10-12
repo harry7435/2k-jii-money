@@ -106,7 +106,7 @@ if (isLoading) {
 - 전월 비교용 쿼리(`prevSummary`, `prevSnapshots` 등 보조 데이터)나 버튼 전용 `isPending`은 로딩 조건에서 제외한다 — 있으면 보여주고 없으면 그 부분만 생략하는 기존 방식 유지
 - early return(`if (isLoading) return ...`)은 반드시 그 컴포넌트의 **모든** 훅 호출(`useQuery`/`useMutation`/`useEffect`/`useMemo` 등) 이후에 위치시킨다 — 그렇지 않으면 React Hooks 규칙 위반으로 훅 순서가 깨짐
 
-적용 예: `app/home/dashboard/page.tsx`의 `isLoading = !familyId || txLoading || catLoading || summaryLoading`, 동일 패턴이 `dashboard/trend`, `transactions`, `budget`, `assets`, `settings` 페이지에도 적용됨 (`settings`는 `family`·`member`를 직접 쓰므로 `!family || !member`로 판정)
+적용 예: `app/home/dashboard/page.tsx`의 `isLoading = !familyId || txLoading || catLoading || summaryLoading`, 동일 패턴이 `dashboard/trend`, `transactions`, `budget`, `assets`, `settings` 페이지에도 적용됨 (`settings`는 `family`·`member`를 직접 쓰므로 `!family || !member`로 판정). `transactions`는 `createEarlyFetch`로 `familyId`가 생기기 전에 조회를 먼저 보내지만 `isLoading`의 `!familyId` 첫 항은 그대로 둔다 — 상세는 `.claude/rules/supabase.md`
 
 ## 거래 목록 UI 규칙
 

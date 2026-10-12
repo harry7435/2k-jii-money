@@ -56,6 +56,7 @@ apps/web/
 │       │   └── familyStore.ts  # Zustand store (family, member 전역 상태)
 │       ├── supabase/
 │       │   ├── client.ts       # 브라우저용 Supabase 클라이언트
+│       │   ├── earlyFetch.ts   # createEarlyFetch — membership을 기다리지 않고 첫 화면 조회를 먼저 보냄
 │       │   ├── server.ts       # 서버용 Supabase 클라이언트
 │       │   └── queries.ts      # 모든 DB 쿼리 함수
 │       ├── utils/
