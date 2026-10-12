@@ -73,6 +73,12 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // /home/* 은 가족 소속 확인을 건너뛴다. 이 RPC는 HTML이 나가기 전에 DB를 한 번
+  // 다녀오는 것이라, 앱을 열 때와 탭을 옮길 때마다 빈 화면 시간이 그만큼 늘어난다.
+  // 가족이 없는 사용자가 여기로 직접 들어오면 home/layout.tsx가 안내 화면을 보여주고,
+  // 데이터는 어차피 RLS가 막는다.
+  if (isPathIn(pathname, ["/home"])) return response;
+
   // 로그인 상태 — 가족 소속 여부로 갈린다.
   const { data: familyId } = await supabase.rpc("my_family_id");
   const hasFamily = Boolean(familyId);
