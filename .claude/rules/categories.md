@@ -15,6 +15,7 @@ level 3 (소분류): 식재료, 함께외식 ...
 ## 트랜잭션에서 category_id
 
 항상 **가장 구체적인 레벨**의 ID를 저장:
+
 - 소분류 선택 시 → 소분류 ID
 - 중분류까지만 선택 시 → 중분류 ID
 
@@ -33,9 +34,9 @@ level 3 (소분류): 식재료, 함께외식 ...
 ## 유틸 함수 (`src/lib/utils/categoryUtils.ts`)
 
 ```ts
-getCategoriesByLevel(categories, level)     // level별 필터
-getChildCategories(categories, parentId)    // 직접 자식만
-getCategoryPath(categoryId, categories)     // 루트까지 경로 배열 [대, 중, 소]
+getCategoriesByLevel(categories, level); // level별 필터
+getChildCategories(categories, parentId); // 직접 자식만
+getCategoryPath(categoryId, categories); // 루트까지 경로 배열 [대, 중, 소]
 ```
 
 ## 대분류 → 거래 타입 매핑
@@ -51,4 +52,5 @@ MAJOR_CATEGORY_TYPE_MAP: { '수입': 'income', '저축': 'savings', '지출': 'e
 - **대분류(수입/저축/지출)는 이름을 바꾸지 못하게 둔다** — `MAJOR_CATEGORY_TYPE_MAP`이 이름으로 거래 타입을 정한다
 - 같은 상위 분류 아래 같은 이름은 막는다 — `insertMissingSubCategories`가 `parentId:name`으로 존재 여부를 판단한다
 - 삭제 가능 여부는 `is_default`로만 가른다 (기본 항목은 삭제 불가, 직접 추가한 항목만 삭제). 예전에는 "기본 트리에 없는 이름의 중분류"를 구항목으로 보고 삭제 버튼을 붙였는데, 이름을 바꿀 수 있게 되면서 이름 기반 판정은 쓸 수 없어 제거했다
+- **삭제 전에 연결된 내역 건수를 세어 확인창에 보여준다** (`confirmAndDeleteCategory`). `categories`를 지우면 하위 카테고리·거래·예산이 `ON DELETE CASCADE`로 함께 지워지고 되돌릴 수 없기 때문. 건수는 `getCategoryIdsWithDescendants`로 하위까지 모은 ID에 대해 `countTransactionsByCategories`로 센다. 건수 조회가 실패하면 삭제하지 않는다. 삭제 버튼을 새로 만들 때 `deleteCatMutation.mutate`를 직접 부르지 말 것
 - 기본 트리(`DEFAULT_CATEGORY_TREE`)에는 특정인 이름을 넣지 않는다. 가입하는 모든 가족에게 복사되는 값이다
