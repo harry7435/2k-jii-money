@@ -10,7 +10,6 @@ import {
   getCategories,
   getMembers,
   deleteTransaction,
-  getMonthlySummary,
   getPaymentSources,
 } from "@/src/lib/supabase/queries";
 import {
@@ -37,6 +36,7 @@ import {
   type TransactionFilter,
 } from "@/src/components/transactions/TransactionFilterPanel";
 import { TransactionsSkeleton } from "@/src/components/skeletons/TransactionsSkeleton";
+import { createEarlyFetch } from "@/src/lib/supabase/earlyFetch";
 import type { Transaction } from "@2k-jii-money/supabase-types";
 
 function parseFilter(
@@ -77,36 +77,54 @@ function TransactionsPageInner() {
 
   const familyId = family?.id ?? "";
 
+  // 앱을 처음 열면 familyId는 membership 응답이 와야 생긴다. 그때까지 기다렸다가 조회를
+  // 시작하면 왕복이 직렬로 쌓이므로, familyId 없이(RLS 범위로) 먼저 보내 두고 아래
+  // queryFn들이 이어받는다. 탭 전환처럼 familyId가 이미 있으면 보내지 않는다.
+  const [early] = useState(() => {
+    if (typeof window === "undefined" || familyId) return null;
+    return {
+      yearMonth,
+      requests: createEarlyFetch({
+        transactions: getTransactions(null, yearMonth),
+        categories: getCategories(null),
+        members: getMembers(null),
+        paymentSources: getPaymentSources(null),
+      }),
+    };
+  });
+
   const { data: transactions = [], isLoading: txLoading } = useQuery({
     queryKey: ["transactions", familyId, yearMonth],
-    queryFn: () => getTransactions(familyId, yearMonth),
+    queryFn: async () =>
+      // 먼저 보낸 요청은 처음 열었던 달의 것이다. 그사이 달을 바꿨으면 쓰지 않는다.
+      (early?.yearMonth === yearMonth
+        ? await early.requests.take("transactions")
+        : null) ?? getTransactions(familyId, yearMonth),
     enabled: !!familyId,
   });
 
   const { data: categories = [], isLoading: catLoading } = useQuery({
     queryKey: ["categories", familyId],
-    queryFn: () => getCategories(familyId),
+    queryFn: async () =>
+      (await early?.requests.take("categories")) ?? getCategories(familyId),
     enabled: !!familyId,
   });
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ["members", familyId],
-    queryFn: () => getMembers(familyId),
+    queryFn: async () =>
+      (await early?.requests.take("members")) ?? getMembers(familyId),
     enabled: !!familyId,
   });
 
   const { data: paymentSources = [], isLoading: paymentSourcesLoading } =
     useQuery({
       queryKey: ["paymentSources", familyId],
-      queryFn: () => getPaymentSources(familyId),
+      queryFn: async () =>
+        (await early?.requests.take("paymentSources")) ??
+        getPaymentSources(familyId),
       enabled: !!familyId,
     });
-
-  const { data: summary } = useQuery({
-    queryKey: ["summary", familyId, yearMonth],
-    queryFn: () => getMonthlySummary(familyId, yearMonth),
-    enabled: !!familyId,
-  });
 
   const deleteMutation = useMutation({
     mutationFn: deleteTransaction,
@@ -257,9 +275,9 @@ function TransactionsPageInner() {
 
   const isFiltered = activeFilterCount > 0;
 
-  // 필터 적용 시 요약 수치를 filteredTransactions 기준으로 재계산
+  // 요약은 이미 받은 거래에서 계산한다. getMonthlySummary는 같은 달 거래를 한 번 더
+  // 받아오므로 쓰지 않는다. 필터가 없으면 filteredTransactions가 곧 전체다.
   const displaySummary = useMemo(() => {
-    if (!isFiltered) return summary ?? null;
     let income = 0,
       expense = 0,
       savings = 0;
@@ -269,7 +287,7 @@ function TransactionsPageInner() {
       else if (t.type === "savings") savings += t.amount;
     }
     return { income, expense, savings };
-  }, [isFiltered, filteredTransactions, summary]);
+  }, [filteredTransactions]);
 
   // familyId가 빌 동안(membership 조회 중)도 로딩이다. 이때 쿼리는 enabled:false라
   // isLoading이 false로 나오므로, 빼먹으면 "내역이 없습니다"가 잠깐 번쩍인다.

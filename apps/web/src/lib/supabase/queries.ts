@@ -186,6 +186,17 @@ export async function resetFamilyData(): Promise<void> {
 }
 
 /**
+ * `familyId`가 있으면 그 가족으로 좁히고, `null`이면 RLS에만 맡긴다.
+ *
+ * `null`은 첫 화면에서 membership 응답을 기다리지 않고 조회를 먼저 보낼 때 쓴다.
+ * RLS가 `my_family_id()`로 이미 같은 범위로 좁히므로 결과는 동일하다.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function scopeToFamily(query: any, familyId: string | null) {
+  return familyId ? query.eq("family_id", familyId) : query;
+}
+
+/**
  * 로그인한 사용자의 멤버 행과 소속 가족을 함께 조회한다.
  * RLS가 이미 자기 가족으로 범위를 좁히므로 family_id 필터가 필요 없다.
  * 가족이 없으면 null — 온보딩이 끝나지 않은 상태다.
@@ -239,14 +250,15 @@ export async function getCurrentMembership(): Promise<{
   return { family: family as Family, member: member as Member };
 }
 
-export async function getMembers(familyId: string): Promise<Member[]> {
+export async function getMembers(
+  familyId: string | null,
+): Promise<Member[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("members")
-    .select()
-    .eq("family_id", familyId)
-    .order("created_at");
+  const { data, error } = await scopeToFamily(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("members").select(),
+    familyId,
+  ).order("created_at");
   if (error) throw error;
   return (data ?? []) as Member[];
 }
@@ -297,13 +309,15 @@ export async function createDefaultCategories(familyId: string): Promise<void> {
   await insertLevel(DEFAULT_CATEGORY_TREE, 1, null);
 }
 
-export async function getCategories(familyId: string): Promise<Category[]> {
+export async function getCategories(
+  familyId: string | null,
+): Promise<Category[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("categories")
-    .select()
-    .eq("family_id", familyId)
+  const { data, error } = await scopeToFamily(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("categories").select(),
+    familyId,
+  )
     .order("level")
     .order("name");
   if (error) throw error;
@@ -453,15 +467,14 @@ export async function createDefaultPaymentSources(
 }
 
 export async function getPaymentSources(
-  familyId: string,
+  familyId: string | null,
 ): Promise<PaymentSource[]> {
   const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("payment_sources")
-    .select()
-    .eq("family_id", familyId)
-    .order("sort_order");
+  const { data, error } = await scopeToFamily(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("payment_sources").select(),
+    familyId,
+  ).order("sort_order");
   if (error) throw error;
   return (data ?? []) as PaymentSource[];
 }
@@ -494,16 +507,16 @@ export async function deletePaymentSource(id: string): Promise<void> {
 // ─── Transactions ──────────────────────────────────────────────────────────
 
 export async function getTransactions(
-  familyId: string,
+  familyId: string | null,
   yearMonth: string,
 ): Promise<Transaction[]> {
   const supabase = createClient();
   const { from, to } = monthDateRange(yearMonth);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("transactions")
-    .select()
-    .eq("family_id", familyId)
+  const { data, error } = await scopeToFamily(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("transactions").select(),
+    familyId,
+  )
     .gte("date", from)
     .lt("date", to)
     .order("date", { ascending: false })
