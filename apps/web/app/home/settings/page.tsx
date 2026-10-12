@@ -10,6 +10,7 @@ import {
   Trash2,
   LogOut,
   Plus,
+  Pencil,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import {
   getMembers,
   deleteCategory,
   addCategory,
+  updateCategory,
   getPaymentSources,
   addPaymentSource,
   deletePaymentSource,
@@ -33,7 +35,6 @@ import {
   getCategoriesByLevel,
   getChildCategories,
 } from "@/src/lib/utils/categoryUtils";
-import { DEFAULT_CATEGORY_TREE } from "@/src/lib/constants/categories";
 import { SettingsSkeleton } from "@/src/components/skeletons/SettingsSkeleton";
 import type { PaymentSource } from "@2k-jii-money/supabase-types";
 
@@ -71,6 +72,7 @@ export default function SettingsPage() {
   const [expandedMiddle, setExpandedMiddle] = useState<string | null>(null);
   const [addingSubOf, setAddingSubOf] = useState<string | null>(null); // 소분류 추가 중인 중분류 ID
   const [newSubName, setNewSubName] = useState("");
+  const [renamingCatId, setRenamingCatId] = useState<string | null>(null); // 이름 수정 중인 카테고리 ID
 
   // 거래출처 관리 상태
   const [newSourceName, setNewSourceName] = useState("");
@@ -102,6 +104,24 @@ export default function SettingsPage() {
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["categories", familyId] }),
   });
+
+  const renameCatMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      updateCategory(id, { name }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["categories", familyId] });
+      setRenamingCatId(null);
+    },
+  });
+
+  /** 같은 상위 분류 아래에 같은 이름이 이미 있는지 (자기 자신 제외) */
+  function isDuplicateName(catId: string, name: string) {
+    const target = categories.find((c) => c.id === catId);
+    return categories.some(
+      (c) =>
+        c.id !== catId && c.parent_id === target?.parent_id && c.name === name,
+    );
+  }
 
   const addSubMutation = useMutation({
     mutationFn: ({ parentId, name }: { parentId: string; name: string }) => {
@@ -154,17 +174,6 @@ export default function SettingsPage() {
   const majorCategories = useMemo(
     () => getCategoriesByLevel(categories, 1),
     [categories],
-  );
-
-  // 새 트리에 정의된 중분류 이름 집합 (여기 없으면 구 카테고리로 간주, 삭제 가능)
-  const validMiddleNames = useMemo(
-    () =>
-      new Set(
-        DEFAULT_CATEGORY_TREE.flatMap(
-          (m) => m.children?.map((c) => c.name) ?? [],
-        ),
-      ),
-    [],
   );
 
   const inviteMutation = useMutation({
@@ -338,10 +347,9 @@ export default function SettingsPage() {
             <p className="text-xs text-teal-500 mb-2">{subInitResult}</p>
           )}
           <p className="text-xs text-gray-400 mb-3">
-            <span className="text-orange-400">구항목</span> 표시된 중분류는 삭제
-            가능합니다.
+            중분류와 소분류는 연필 버튼으로 이름을 바꿀 수 있어요.
             <br />
-            소분류는 추가/삭제할 수 있어요.
+            직접 추가한 항목은 삭제할 수 있고, 소분류는 새로 추가할 수 있어요.
           </p>
 
           <div className="space-y-1">
@@ -389,94 +397,142 @@ export default function SettingsPage() {
                         );
                         const isOpenMiddle = expandedMiddle === middle.id;
 
-                        const isLegacyMiddle = !validMiddleNames.has(
-                          middle.name,
-                        );
-
                         return (
                           <div key={middle.id}>
                             {/* 중분류 행 */}
-                            <div className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
-                              <button
-                                onClick={() =>
-                                  setExpandedMiddle(
-                                    isOpenMiddle ? null : middle.id,
-                                  )
-                                }
-                                className="flex items-center gap-2 flex-1 min-w-0"
-                              >
-                                <CategoryIcon
-                                  icon={middle.icon}
-                                  color={middle.color}
-                                  size="sm"
+                            {renamingCatId === middle.id ? (
+                              <div className="px-4 py-2">
+                                <CategoryNameEditor
+                                  initialName={middle.name}
+                                  isDuplicate={(name) =>
+                                    isDuplicateName(middle.id, name)
+                                  }
+                                  isPending={renameCatMutation.isPending}
+                                  onSave={(name) =>
+                                    renameCatMutation.mutate({
+                                      id: middle.id,
+                                      name,
+                                    })
+                                  }
+                                  onCancel={() => setRenamingCatId(null)}
                                 />
-                                <span className="flex-1 text-sm text-left">
-                                  {middle.name}
-                                </span>
-                                {isLegacyMiddle && (
-                                  <span className="text-[10px] bg-orange-100 text-orange-500 px-1.5 py-0.5 rounded-full">
-                                    구항목
-                                  </span>
-                                )}
-                                <span className="text-xs text-gray-400">
-                                  {subList.length}개
-                                </span>
-                                {isOpenMiddle ? (
-                                  <ChevronDown
-                                    size={13}
-                                    className="text-gray-400"
-                                  />
-                                ) : (
-                                  <ChevronRight
-                                    size={13}
-                                    className="text-gray-400"
-                                  />
-                                )}
-                              </button>
-                              {isLegacyMiddle && (
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
                                 <button
-                                  onClick={() => {
-                                    if (
-                                      confirm(
-                                        `"${middle.name}" 카테고리를 삭제하시겠습니까?\n이 카테고리로 등록된 내역도 함께 삭제됩니다.`,
-                                      )
+                                  onClick={() =>
+                                    setExpandedMiddle(
+                                      isOpenMiddle ? null : middle.id,
                                     )
-                                      deleteCatMutation.mutate(middle.id);
-                                  }}
-                                  className="text-gray-300 hover:text-red-400 shrink-0"
+                                  }
+                                  className="flex items-center gap-2 flex-1 min-w-0"
                                 >
-                                  <Trash2 size={13} />
+                                  <CategoryIcon
+                                    icon={middle.icon}
+                                    color={middle.color}
+                                    size="sm"
+                                  />
+                                  <span className="flex-1 text-sm text-left">
+                                    {middle.name}
+                                  </span>
+                                  {middle.is_default && (
+                                    <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                                      기본
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-gray-400">
+                                    {subList.length}개
+                                  </span>
+                                  {isOpenMiddle ? (
+                                    <ChevronDown
+                                      size={13}
+                                      className="text-gray-400"
+                                    />
+                                  ) : (
+                                    <ChevronRight
+                                      size={13}
+                                      className="text-gray-400"
+                                    />
+                                  )}
                                 </button>
-                              )}
-                            </div>
+                                <button
+                                  onClick={() => setRenamingCatId(middle.id)}
+                                  aria-label={`${middle.name} 이름 수정`}
+                                  className="text-gray-300 hover:text-teal-500 shrink-0"
+                                >
+                                  <Pencil size={13} />
+                                </button>
+                                {!middle.is_default && (
+                                  <button
+                                    onClick={() => {
+                                      if (
+                                        confirm(
+                                          `"${middle.name}" 카테고리를 삭제하시겠습니까?\n이 카테고리로 등록된 내역도 함께 삭제됩니다.`,
+                                        )
+                                      )
+                                        deleteCatMutation.mutate(middle.id);
+                                    }}
+                                    className="text-gray-300 hover:text-red-400 shrink-0"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                              </div>
+                            )}
 
                             {/* 소분류 목록 */}
                             {isOpenMiddle && (
                               <div className="px-4 pb-2 space-y-1">
-                                {subList.map((sub) => (
-                                  <div
-                                    key={sub.id}
-                                    className="flex items-center gap-2 pl-2 py-1"
-                                  >
-                                    <span className="flex-1 text-xs text-gray-600">
-                                      {sub.name}
-                                    </span>
-                                    {sub.is_default ? (
-                                      <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
-                                        기본
-                                      </span>
-                                    ) : (
-                                      <button
-                                        onClick={() =>
-                                          deleteCatMutation.mutate(sub.id)
+                                {subList.map((sub) =>
+                                  renamingCatId === sub.id ? (
+                                    <div key={sub.id} className="pl-2 py-1">
+                                      <CategoryNameEditor
+                                        initialName={sub.name}
+                                        isDuplicate={(name) =>
+                                          isDuplicateName(sub.id, name)
                                         }
-                                        className="text-gray-300 hover:text-red-400"
+                                        isPending={renameCatMutation.isPending}
+                                        onSave={(name) =>
+                                          renameCatMutation.mutate({
+                                            id: sub.id,
+                                            name,
+                                          })
+                                        }
+                                        onCancel={() => setRenamingCatId(null)}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div
+                                      key={sub.id}
+                                      className="flex items-center gap-2 pl-2 py-1"
+                                    >
+                                      <span className="flex-1 text-xs text-gray-600">
+                                        {sub.name}
+                                      </span>
+                                      <button
+                                        onClick={() => setRenamingCatId(sub.id)}
+                                        aria-label={`${sub.name} 이름 수정`}
+                                        className="text-gray-300 hover:text-teal-500"
                                       >
-                                        <Trash2 size={12} />
+                                        <Pencil size={12} />
                                       </button>
-                                    )}
-                                  </div>
-                                ))}
+                                      {sub.is_default ? (
+                                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                                          기본
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={() =>
+                                            deleteCatMutation.mutate(sub.id)
+                                          }
+                                          className="text-gray-300 hover:text-red-400"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ),
+                                )}
 
                                 {/* 소분류 추가 */}
                                 {addingSubOf === middle.id ? (
@@ -758,6 +814,66 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** 카테고리 이름 인라인 수정 입력. Enter로 저장, Escape로 취소. */
+function CategoryNameEditor({
+  initialName,
+  isDuplicate,
+  isPending,
+  onSave,
+  onCancel,
+}: {
+  initialName: string;
+  isDuplicate: (name: string) => boolean;
+  isPending: boolean;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const trimmed = name.trim();
+  const duplicate = isDuplicate(trimmed);
+  const canSave = !!trimmed && !duplicate && !isPending;
+
+  function submit() {
+    if (!canSave) return;
+    // 바뀐 게 없으면 요청 없이 닫는다.
+    if (trimmed === initialName) onCancel();
+    else onSave(trimmed);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <input
+          autoFocus
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+            if (e.key === "Escape") onCancel();
+          }}
+          className="flex-1 min-w-0 text-xs border border-teal-300 rounded-lg px-2 py-1 outline-none"
+        />
+        <button
+          disabled={!canSave}
+          onClick={submit}
+          className="text-xs text-teal-500 font-medium disabled:opacity-40"
+        >
+          저장
+        </button>
+        <button onClick={onCancel} className="text-xs text-gray-400">
+          취소
+        </button>
+      </div>
+      {duplicate && (
+        <p className="mt-1 text-[10px] text-red-400">
+          같은 분류 안에 이미 있는 이름입니다.
+        </p>
       )}
     </div>
   );
