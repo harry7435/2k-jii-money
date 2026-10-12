@@ -8,6 +8,20 @@
 - TanStack React Query로 캐싱/로딩 상태 관리
 - yearMonth 형식: `"YYYY-MM"` 문자열
 
+## 첫 화면 조회를 membership과 동시에 보내기
+
+앱을 처음 열면 `familyId`는 membership 응답이 와야 생긴다. `enabled: !!familyId`만 쓰면
+membership → 데이터 순으로 왕복이 직렬로 쌓인다(각각 CORS preflight까지 붙어 4왕복).
+
+`transactions/page.tsx`는 마운트 시 `familyId` 없이 조회를 먼저 보내 두고
+(`createEarlyFetch`, `src/lib/supabase/earlyFetch.ts`), `familyId`가 생긴 뒤의 `queryFn`이
+그 결과를 이어받는다. 쿼리 키는 그대로라 캐시 공유·invalidate에는 영향이 없다.
+
+- `getTransactions`·`getCategories`·`getMembers`·`getPaymentSources`는 `familyId`에 `null`을
+  받으면 `family_id` 필터를 생략한다. 범위는 RLS(`my_family_id()`)가 동일하게 좁힌다
+- `take()`는 한 번만 값을 준다. 이후 리페치는 평소 경로로 간다
+- 진입 화면이 아닌 페이지에는 적용하지 않았다 — 탭 전환 시에는 `familyId`가 이미 있어 이득이 없다
+
 ## PostgREST row limit
 
 - Supabase REST(PostgREST)는 **기본 1000행** limit이 걸려 있다
