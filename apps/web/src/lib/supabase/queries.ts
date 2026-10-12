@@ -250,9 +250,7 @@ export async function getCurrentMembership(): Promise<{
   return { family: family as Family, member: member as Member };
 }
 
-export async function getMembers(
-  familyId: string | null,
-): Promise<Member[]> {
+export async function getMembers(familyId: string | null): Promise<Member[]> {
   const supabase = createClient();
   const { data, error } = await scopeToFamily(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -627,6 +625,24 @@ export async function deleteTransaction(id: string): Promise<void> {
     .delete()
     .eq("id", id);
   if (error) throw error;
+}
+
+/** 주어진 카테고리들에 연결된 거래 건수. 카테고리 삭제 전 영향 범위를 보여줄 때 쓴다. */
+export async function countTransactionsByCategories(
+  familyId: string,
+  categoryIds: string[],
+): Promise<number> {
+  if (categoryIds.length === 0) return 0;
+  const supabase = createClient();
+  // head: true — 행은 받지 않고 건수만 받는다.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count, error } = await (supabase as any)
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("family_id", familyId)
+    .in("category_id", categoryIds);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function getMonthlySummary(

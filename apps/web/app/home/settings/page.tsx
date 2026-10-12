@@ -21,6 +21,7 @@ import {
   getCategories,
   getMembers,
   deleteCategory,
+  countTransactionsByCategories,
   addCategory,
   updateCategory,
   getPaymentSources,
@@ -34,6 +35,7 @@ import { CategoryIcon } from "@/src/components/CategoryIcon";
 import {
   getCategoriesByLevel,
   getChildCategories,
+  getCategoryIdsWithDescendants,
 } from "@/src/lib/utils/categoryUtils";
 import { SettingsSkeleton } from "@/src/components/skeletons/SettingsSkeleton";
 import type { PaymentSource } from "@2k-jii-money/supabase-types";
@@ -101,9 +103,46 @@ export default function SettingsPage() {
 
   const deleteCatMutation = useMutation({
     mutationFn: deleteCategory,
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["categories", familyId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["categories", familyId] });
+      // 카테고리를 지우면 연결된 거래·예산도 DB에서 함께 지워진다.
+      // 다른 탭이 지워진 내역을 캐시에서 계속 보여주지 않도록 같이 무효화한다.
+      for (const key of [
+        "transactions",
+        "summary",
+        "transactionHistory",
+        "savingsHistory",
+        "budgets",
+      ]) {
+        qc.invalidateQueries({ queryKey: [key, familyId] });
+      }
+    },
   });
+
+  // 삭제는 되돌릴 수 없고 연결된 내역까지 지우므로, 몇 건이 사라지는지 먼저 세어 보여준다.
+  const [checkingDeleteId, setCheckingDeleteId] = useState<string | null>(null);
+  async function confirmAndDeleteCategory(catId: string, name: string) {
+    if (checkingDeleteId) return;
+    setCheckingDeleteId(catId);
+    try {
+      const count = await countTransactionsByCategories(
+        familyId,
+        getCategoryIdsWithDescendants(categories, catId),
+      );
+      const message =
+        count > 0
+          ? `"${name}" 카테고리를 삭제하시겠습니까?\n\n이 카테고리로 등록된 내역 ${count.toLocaleString()}건이 함께 삭제되며, 되돌릴 수 없습니다.`
+          : `"${name}" 카테고리를 삭제하시겠습니까?\n등록된 내역은 없습니다.`;
+      if (confirm(message)) deleteCatMutation.mutate(catId);
+    } catch {
+      // 건수를 모르는 채로 지우게 두지 않는다.
+      alert(
+        "연결된 내역 수를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    } finally {
+      setCheckingDeleteId(null);
+    }
+  }
 
   const renameCatMutation = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
@@ -464,15 +503,15 @@ export default function SettingsPage() {
                                 </button>
                                 {!middle.is_default && (
                                   <button
-                                    onClick={() => {
-                                      if (
-                                        confirm(
-                                          `"${middle.name}" 카테고리를 삭제하시겠습니까?\n이 카테고리로 등록된 내역도 함께 삭제됩니다.`,
-                                        )
+                                    onClick={() =>
+                                      confirmAndDeleteCategory(
+                                        middle.id,
+                                        middle.name,
                                       )
-                                        deleteCatMutation.mutate(middle.id);
-                                    }}
-                                    className="text-gray-300 hover:text-red-400 shrink-0"
+                                    }
+                                    disabled={checkingDeleteId !== null}
+                                    aria-label={`${middle.name} 삭제`}
+                                    className="text-gray-300 hover:text-red-400 shrink-0 disabled:opacity-40"
                                   >
                                     <Trash2 size={13} />
                                   </button>
@@ -523,9 +562,14 @@ export default function SettingsPage() {
                                       ) : (
                                         <button
                                           onClick={() =>
-                                            deleteCatMutation.mutate(sub.id)
+                                            confirmAndDeleteCategory(
+                                              sub.id,
+                                              sub.name,
+                                            )
                                           }
-                                          className="text-gray-300 hover:text-red-400"
+                                          disabled={checkingDeleteId !== null}
+                                          aria-label={`${sub.name} 삭제`}
+                                          className="text-gray-300 hover:text-red-400 disabled:opacity-40"
                                         >
                                           <Trash2 size={12} />
                                         </button>

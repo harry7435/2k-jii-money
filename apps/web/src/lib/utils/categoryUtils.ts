@@ -68,3 +68,18 @@ export function getCategoriesByLevel(categories: Category[], level: number): Cat
 export function getChildCategories(categories: Category[], parentId: string): Category[] {
   return categories.filter((c) => c.parent_id === parentId)
 }
+
+/**
+ * 카테고리 자신과 모든 하위 카테고리의 ID.
+ * 카테고리를 지우면 하위 카테고리와 거기 연결된 거래까지 DB에서 연쇄 삭제되므로,
+ * 삭제 전에 영향 범위를 셀 때 쓴다.
+ */
+export function getCategoryIdsWithDescendants(categories: Category[], categoryId: string): string[] {
+  const ids = [categoryId]
+  for (let i = 0; i < ids.length; i++) {
+    for (const c of categories) {
+      if (c.parent_id === ids[i]) ids.push(c.id)
+    }
+  }
+  return ids
+}
