@@ -34,11 +34,15 @@ export default function RootLayout({
           block으로 invisible 처리해야 FOUT을 막을 수 있어 Next의 권장값을 의도적으로 어김.
           no-page-custom-font 룰은 Pages Router용이며, App Router의 루트 layout은
           _document.js와 동등한 위치이므로 무시해도 안전함.
+
+          축 범위(opsz,wght,FILL,GRAD)를 지정하지 않는다. 지정하면 전체 가변 폰트(약 4MB)가
+          내려오고, display=block이라 그동안 아이콘이 전부 비어 보인다. 이 앱은
+          font-variation-settings를 쓰지 않으므로 기본 인스턴스(약 320KB)면 충분하다.
         */}
         {/* eslint-disable-next-line @next/next/google-font-display, @next/next/no-page-custom-font */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block"
         />
       </head>
       <body className={`${geist.variable} font-sans antialiased bg-gray-50`}>
