@@ -115,7 +115,9 @@ export const config = {
      * - 정적 파일·이미지 최적화 — 요청마다 getUser()가 붙으면 불필요하게 느려진다
      * - /api/* — Vercel Cron 같은 세션 없는 호출이 /welcome으로 리다이렉트되면 안 된다.
      *   API 라우트는 각자 인가를 책임진다.
+     * - manifest.webmanifest — 브라우저가 쿠키 없이 가져오므로, 가드를 타면 /welcome으로
+     *   리다이렉트되어 PWA 아이콘·이름이 적용되지 않는다
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
