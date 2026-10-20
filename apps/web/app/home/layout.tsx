@@ -4,17 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { Ssgoi } from "@ssgoi/react";
+import { SsgoiRouteBoundary } from "@ssgoi/react/nextjs";
 import { useFamilyStore } from "@/src/lib/store/familyStore";
 import { createClient } from "@/src/lib/supabase/client";
 import { getCurrentMembership } from "@/src/lib/supabase/queries";
-
-const TABS = [
-  { href: "/home/transactions", icon: "receipt_long", label: "내역" },
-  { href: "/home/budget", icon: "account_balance_wallet", label: "예산" },
-  { href: "/home/dashboard", icon: "bar_chart", label: "대시보드" },
-  { href: "/home/assets", icon: "account_balance", label: "자산" },
-  { href: "/home/settings", icon: "settings", label: "설정" },
-];
+import { TABS } from "@/src/lib/constants/navigation";
+import { useSsgoiConfig } from "@/src/lib/ssgoiConfig";
 
 export default function HomeLayout({
   children,
@@ -23,6 +19,7 @@ export default function HomeLayout({
 }) {
   const pathname = usePathname();
   const qc = useQueryClient();
+  const ssgoiConfig = useSsgoiConfig();
   const setFamily = useFamilyStore((s) => s.setFamily);
   const setMember = useFamilyStore((s) => s.setMember);
 
@@ -127,7 +124,17 @@ export default function HomeLayout({
         })}
       </nav>
 
-      <div className="flex-1 overflow-y-auto pb-20 md:pb-0">{children}</div>
+      {/* ssgoi는 나가는 페이지를 이 셸 기준 absolute로 잠시 붙인다. 탭바는 셸 밖이라 움직이지 않는다.
+          overflow-y를 두지 않는다: ssgoi가 이 div를 스크롤 요소로 오인해 탭 전환 시 스크롤이 튄다.
+          경계는 불투명 배경 + 화면 높이를 가진다: drill은 새 화면이 이전 화면 위를 덮으며 들어오므로
+          투명하거나 짧으면 아래 화면이 비친다. 높이는 하단 탭바 여백(pb-20)만큼 빼 짧은 페이지에 스크롤이 생기지 않게 한다. */}
+      <div className="flex-1 relative z-0 overflow-x-clip pb-20 md:pb-0">
+        <Ssgoi config={ssgoiConfig}>
+          <SsgoiRouteBoundary className="bg-white min-h-[calc(100dvh-5rem)] md:min-h-dvh">
+            {children}
+          </SsgoiRouteBoundary>
+        </Ssgoi>
+      </div>
     </div>
   );
 }
