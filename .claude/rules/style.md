@@ -5,6 +5,7 @@
 - Tailwind CSS v4 사용 (v3 문법과 다름 — `@apply` 등 주의)
 - 모바일 우선 레이아웃: `max-w-md mx-auto`로 고정 너비
 - 주 색상: teal-400 (활성 탭, 강조)
+- 커서: `button`·`select`·`[role="button"]`은 `globals.css`의 base 규칙이 `cursor: pointer`를 준다(v4 preflight 기본값이 `default`라서). 버튼에 `cursor-pointer`를 따로 붙이지 않는다. 버튼이 아닌 요소(`div`/`tr` 등)에 `onClick`을 달 때만 `cursor-pointer`를 직접 넣는다. 모달 바깥 배경은 예외로 넣지 않는다
 
 ## 아이콘
 
@@ -103,10 +104,23 @@ if (isLoading) {
 
 - **`!familyId`를 반드시 첫 항으로 넣는다.** `app/home/layout.tsx`는 membership을 기다리는 동안 셸만 그리고 페이지를 그대로 렌더하므로, `family`가 아직 없는 구간이 사용자에게 보인다. 이때 쿼리는 `enabled: false`라 React Query v5에서 **`isLoading`이 `false`** 로 나온다(`isLoading = isPending && isFetching`). 빼먹으면 스켈레톤 대신 "내역이 없습니다" 같은 빈 상태가 잠깐 번쩍인다 — 배경은 `.claude/rules/zustand-hydration.md`
 - **핵심 쿼리**의 `isLoading`만 OR로 묶는다. `isFetching`은 쓰지 않음 — 캐시된 데이터가 있는 상태에서 백그라운드 리페치 시 화면이 깜빡이는 것을 방지하기 위함
+- 월 이동처럼 쿼리 키만 바뀌는 재조회에는 스켈레톤을 다시 띄우지 않는다. `transactions`는 거래 쿼리에 `placeholderData: keepPreviousData`를 주고 `isPlaceholderData`일 때 요약·목록을 `opacity-50`으로 흐린다. 스켈레톤을 쓰는 로딩 분기도 헤더는 실제 화면과 같은 JSX를 공유하고, 스켈레톤 블록은 실제 요소와 여백·높이를 맞춘다 — 다르면 교체 순간 레이아웃이 튄다
 - 전월 비교용 쿼리(`prevSummary`, `prevSnapshots` 등 보조 데이터)나 버튼 전용 `isPending`은 로딩 조건에서 제외한다 — 있으면 보여주고 없으면 그 부분만 생략하는 기존 방식 유지
 - early return(`if (isLoading) return ...`)은 반드시 그 컴포넌트의 **모든** 훅 호출(`useQuery`/`useMutation`/`useEffect`/`useMemo` 등) 이후에 위치시킨다 — 그렇지 않으면 React Hooks 규칙 위반으로 훅 순서가 깨짐
 
 적용 예: `app/home/dashboard/page.tsx`의 `isLoading = !familyId || txLoading || catLoading || summaryLoading`, 동일 패턴이 `dashboard/trend`, `transactions`, `budget`, `assets`, `settings` 페이지에도 적용됨 (`settings`는 `family`·`member`를 직접 쓰므로 `!family || !member`로 판정). `transactions`는 `createEarlyFetch`로 `familyId`가 생기기 전에 조회를 먼저 보내지만 `isLoading`의 `!familyId` 첫 항은 그대로 둔다 — 상세는 `.claude/rules/supabase.md`
+
+## 화면 전환 (ssgoi)
+
+`@ssgoi/react`로 `/home/*` 화면 사이 이동에 애니메이션을 준다. 온보딩 경로는 대상이 아니다.
+
+- **셸 위치**: `app/home/layout.tsx`의 콘텐츠 div(`relative z-0 overflow-x-clip`) 안에 `<Ssgoi>` → `<SsgoiRouteBoundary>`로 `children`을 감싼다. ssgoi가 나가는 페이지를 이 셸 기준 `absolute`로 잠시 붙이므로, 탭바(셸 밖)는 움직이지 않고 데스크톱 사이드바 오프셋도 어긋나지 않는다
+- **규칙은 `src/lib/ssgoiConfig.ts`에만 둔다**. 탭 사이는 `ordered` + `slide()`이고 순서는 `TABS`(`src/lib/constants/navigation.ts`)에서 가져온다. 새 탭은 `TABS`만 고치면 탭바와 전환 방향이 함께 바뀐다
+- **경계(`SsgoiRouteBoundary`)는 `bg-white` + 화면 높이를 가진다**. drill은 새 화면이 이전 화면 위를 덮으며 들어오는데, 페이지들이 배경 없이 투명해서 빼면 아래 화면이 비쳐 겹쳐 보인다(탭 slide는 겹치지 않아 드러나지 않음)
+- **상세 화면을 추가하면** `ssgoiConfig.ts`에 `from`/`to` 규칙(`drill()`)을 더한다. `from`/`to`는 양방향이라 뒤로가기는 반대 방향으로 나온다. 규칙에 없는 이동은 전환 없이 바로 바뀐다
+- **`prefers-reduced-motion`**: ssgoi는 자체 처리하지 않는다. `useSsgoiConfig()`가 해당 설정이면 빈 `transitions`를 돌려줘 전환을 끈다. 서버·hydration 때는 항상 "아님"으로 보므로 마크업 불일치가 없다
+- **`fixed` 오버레이·모달은 반드시 `createPortal(document.body)`로 렌더한다.** 셸의 `z-0`이 스태킹 컨텍스트를 만들어, 포털이 없으면 하단 탭바(`z-40`) 아래로 깔린다
+- **셸 div에 `overflow-y-auto`/`scroll`을 두지 않는다.** ssgoi가 경계에서 위로 올라가며 overflow-y가 auto|scroll인 첫 조상을 스크롤 요소로 고르는데, 실제 스크롤은 window라 탭 전환 시 스크롤이 0으로 튄다
 
 ## 거래 목록 UI 규칙
 

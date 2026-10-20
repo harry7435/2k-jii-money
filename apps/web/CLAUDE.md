@@ -11,6 +11,7 @@
 - **아이콘**: Material Symbols Outlined (CDN), lucide-react
 - **백엔드**: Supabase (`@supabase/supabase-js` v2, `@supabase/ssr`)
 - **상태관리**: Zustand v5 (familyStore는 메모리 전용 — 서버가 진실의 원천, uiPrefsStore는 persist 미들웨어로 localStorage 저장), TanStack React Query v5
+- **화면 전환**: @ssgoi/react (탭 slide, 상세 화면 drill)
 - **차트**: recharts v3
 - **유틸리티**: date-fns v4, uuid v13, react-qr-code
 
@@ -27,7 +28,7 @@ apps/web/
 │   ├── create-family/page.tsx  # 가족 생성 (+ 샘플 데이터 옵션)
 │   ├── join/page.tsx           # 초대 링크 참여 (/join?token=...)
 │   └── home/
-│       ├── layout.tsx          # 하단 탭 네비게이션, familyStore 초기화
+│       ├── layout.tsx          # 하단 탭 네비게이션, familyStore 초기화, ssgoi 전환 셸
 │       ├── page.tsx            # /home → /home/transactions 리다이렉트
 │       ├── transactions/page.tsx
 │       ├── budget/page.tsx
@@ -52,6 +53,7 @@ apps/web/
 │   │   └── skeletons/          # 페이지별 로딩 스켈레톤 (DashboardSkeleton 등)
 │   └── lib/
 │       ├── providers.tsx       # QueryClientProvider 래퍼
+│       ├── ssgoiConfig.ts      # 화면 전환 규칙 + prefers-reduced-motion 처리 (useSsgoiConfig)
 │       ├── store/
 │       │   └── familyStore.ts  # Zustand store (family, member 전역 상태)
 │       ├── supabase/
@@ -66,6 +68,7 @@ apps/web/
 │       │   ├── sampleData.ts     # 가입 시 넣을 3개월치 샘플 데이터 생성 (순수 함수)
 │       │   └── trendUtils.ts     # 월별 집계 (buildMonthList, aggregateMonthly*)
 │       └── constants/
+│           ├── navigation.ts   # TABS (하단 탭/사이드바 + 전환 순서의 단일 출처)
 │           └── categories.ts   # DEFAULT_CATEGORY_TREE, DEFAULT_PAYMENT_SOURCES, MAJOR_CATEGORY_TYPE_MAP
 ├── vitest.config.mts           # Vitest 설정 (확장자 .mts로 ESM 강제)
 └── package.json
@@ -77,7 +80,7 @@ apps/web/
 
 - `supabase.md` — Supabase 클라이언트 사용, 데이터 페칭 패턴
 - `zustand-hydration.md` — Zustand 전역 상태 (familyStore는 메모리 전용, 서버가 진실의 원천)
-- `style.md` — Tailwind v4, 아이콘, 모달·바텀시트·DateTimePicker 패턴
+- `style.md` — Tailwind v4, 아이콘, 모달·바텀시트·DateTimePicker 패턴, 화면 전환(ssgoi)
 - `categories.md` — 3단계 카테고리 구조, 유틸 함수, 거래 타입 매핑
 - `schema.md` — DB 스키마 특이사항 (time, evaluation, payment_sources 등)
 
