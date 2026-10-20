@@ -6,7 +6,10 @@ export function AssetsSkeleton() {
       <Skeleton className="h-24 rounded-2xl" />
       <Skeleton className="h-10 rounded-xl" />
       {Array.from({ length: 2 }, (_, i) => (
-        <div key={i} className="bg-white rounded-2xl p-3 space-y-2">
+        <div
+          key={i}
+          className="bg-white rounded-2xl border border-gray-100 p-3 space-y-2"
+        >
           <Skeleton className="h-4 w-24 rounded" />
           <Skeleton className="h-10 rounded-xl" />
           <Skeleton className="h-10 rounded-xl" />

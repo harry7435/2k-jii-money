@@ -132,9 +132,9 @@ export default function AssetsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="p-4 space-y-4">
-          <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+      <div className="flex flex-col h-full">
+        <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+        <div className="p-4 md:p-6">
           <AssetsSkeleton />
         </div>
       </div>
@@ -163,10 +163,10 @@ export default function AssetsPage() {
   const netWorth = assetTotal - liabilityTotal;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-4 space-y-4">
-        <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+    <div className="flex flex-col h-full">
+      <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
 
+      <div className="p-4 space-y-4 md:p-6">
         {/* 요약 카드 */}
         <div className="bg-linear-to-r from-teal-400 to-teal-500 rounded-2xl p-4 text-white">
           <div className="grid grid-cols-3 text-center">
@@ -194,7 +194,7 @@ export default function AssetsPage() {
         {/* 전월 대비 변화 */}
         <button
           onClick={() => setShowComparison(true)}
-          className="w-full flex items-center justify-center gap-1 py-2.5 rounded-xl bg-white text-sm font-medium text-gray-600 active:bg-gray-50"
+          className="w-full flex items-center justify-center gap-1 py-2.5 rounded-xl bg-white border border-gray-100 text-sm font-medium text-gray-600 active:bg-gray-50"
         >
           <span className="material-symbols-outlined text-lg">
             compare_arrows
@@ -222,9 +222,12 @@ export default function AssetsPage() {
             0,
           );
           return (
-            <div key={group.type} className="bg-white rounded-2xl">
+            <div
+              key={group.type}
+              className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+            >
               {/* 그룹 헤더 */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-gray-500">
                     {group.icon}
@@ -246,7 +249,7 @@ export default function AssetsPage() {
                   <button
                     key={account.id}
                     onClick={() => setEditingAccount(account)}
-                    className="w-full flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors text-left"
+                    className="w-full flex items-center justify-between px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors text-left"
                   >
                     <span className="text-sm text-gray-700 font-medium">
                       {account.name}
