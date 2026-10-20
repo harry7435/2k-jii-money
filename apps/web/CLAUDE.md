@@ -11,7 +11,7 @@
 - **아이콘**: Material Symbols Outlined (CDN), lucide-react
 - **백엔드**: Supabase (`@supabase/supabase-js` v2, `@supabase/ssr`)
 - **상태관리**: Zustand v5 (familyStore는 메모리 전용 — 서버가 진실의 원천, uiPrefsStore는 persist 미들웨어로 localStorage 저장), TanStack React Query v5
-- **화면 전환**: @ssgoi/react (탭 slide, 상세 화면 drill)
+- **화면 전환**: @ssgoi/react 7.4.1 (탭 slide, 상세 화면 drill)
 - **차트**: recharts v3
 - **유틸리티**: date-fns v4, uuid v13, react-qr-code
 

@@ -6,6 +6,7 @@
 - 모바일 우선 레이아웃: `max-w-md mx-auto`로 고정 너비
 - 주 색상: teal-400 (활성 탭, 강조)
 - 커서: `button`·`select`·`[role="button"]`은 `globals.css`의 base 규칙이 `cursor: pointer`를 준다(v4 preflight 기본값이 `default`라서). 버튼에 `cursor-pointer`를 따로 붙이지 않는다. 버튼이 아닌 요소(`div`/`tr` 등)에 `onClick`을 달 때만 `cursor-pointer`를 직접 넣는다. 모달 바깥 배경은 예외로 넣지 않는다
+- `globals.css`의 `@layer base` 규칙을 바꿨는데 화면에 반영되지 않으면 dev 서버를 먼저 재시작한다(Turbopack이 이 변경을 집어 가지 못한 적이 있다 — 커서 규칙 도입 때). 재시작해도 안 바뀌면 그때 코드를 본다. 헷갈리면 `pnpm build` 후 `pnpm exec next start -p 3001`로 같은 코드를 교차 확인한다
 
 ## 아이콘
 
