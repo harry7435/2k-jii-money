@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useMemo, Suspense } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Plus, Trash2, SlidersHorizontal, X } from "lucide-react";
 import { useFamilyStore } from "@/src/lib/store/familyStore";
@@ -93,7 +98,11 @@ function TransactionsPageInner() {
     };
   });
 
-  const { data: transactions = [], isLoading: txLoading } = useQuery({
+  const {
+    data: transactions = [],
+    isLoading: txLoading,
+    isPlaceholderData: txStale,
+  } = useQuery({
     queryKey: ["transactions", familyId, yearMonth],
     queryFn: async () =>
       // 먼저 보낸 요청은 처음 열었던 달의 것이다. 그사이 달을 바꿨으면 쓰지 않는다.
@@ -101,6 +110,9 @@ function TransactionsPageInner() {
         ? await early.requests.take("transactions")
         : null) ?? getTransactions(familyId, yearMonth),
     enabled: !!familyId,
+    // 달을 바꿀 때 화면 전체를 스켈레톤으로 갈아끼우면 레이아웃이 튄다. 새 달이 올 때까지
+    // 이전 달을 흐리게 보여 주고, 스켈레톤은 처음 열 때만 나오게 한다.
+    placeholderData: keepPreviousData,
   });
 
   const { data: categories = [], isLoading: catLoading } = useQuery({
@@ -298,21 +310,45 @@ function TransactionsPageInner() {
     membersLoading ||
     paymentSourcesLoading;
 
+  // 로딩 중에도 실제 화면과 같은 헤더를 그린다. 필터 버튼이 빠지면 헤더 높이와
+  // 월 선택기 폭이 달라져 스켈레톤 → 실제 화면 교체 때 레이아웃이 튄다.
+  const header = (
+    <div className="flex items-center gap-2 px-4 md:px-6">
+      <div className="flex-1">
+        <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+      </div>
+      <button
+        onClick={toggleTimeFormat}
+        className="shrink-0 pb-2 mr-1 text-xs font-medium text-gray-500 hover:text-gray-700"
+        title="시간 표시 형식 전환"
+      >
+        {timeFormat === "24h" ? "24시" : "오전·오후"}
+      </button>
+      <div className="relative shrink-0 pb-2">
+        <button
+          onClick={() => setShowFilter(true)}
+          disabled={isLoading}
+          className={`flex items-center justify-center w-9 h-9 rounded-full border transition-colors ${
+            isFiltered
+              ? "bg-teal-400 border-teal-400 text-white"
+              : "bg-white border-gray-200 text-gray-500"
+          }`}
+        >
+          <SlidersHorizontal size={16} />
+        </button>
+        {activeFilterCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+            {activeFilterCount}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center gap-2 px-4 md:px-6">
-          <div className="flex-1">
-            <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
-          </div>
-          <button
-            onClick={toggleTimeFormat}
-            className="shrink-0 pb-2 mr-1 text-xs font-medium text-gray-500 hover:text-gray-700"
-            title="시간 표시 형식 전환"
-          >
-            {timeFormat === "24h" ? "24시" : "오전·오후"}
-          </button>
-        </div>
+        {header}
         <TransactionsSkeleton />
       </div>
     );
@@ -320,35 +356,7 @@ function TransactionsPageInner() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 md:px-6">
-        <div className="flex-1">
-          <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
-        </div>
-        <button
-          onClick={toggleTimeFormat}
-          className="shrink-0 pb-2 mr-1 text-xs font-medium text-gray-500 hover:text-gray-700"
-          title="시간 표시 형식 전환"
-        >
-          {timeFormat === "24h" ? "24시" : "오전·오후"}
-        </button>
-        <div className="relative shrink-0 pb-2">
-          <button
-            onClick={() => setShowFilter(true)}
-            className={`flex items-center justify-center w-9 h-9 rounded-full border transition-colors ${
-              isFiltered
-                ? "bg-teal-400 border-teal-400 text-white"
-                : "bg-white border-gray-200 text-gray-500"
-            }`}
-          >
-            <SlidersHorizontal size={16} />
-          </button>
-          {activeFilterCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-              {activeFilterCount}
-            </span>
-          )}
-        </div>
-      </div>
+      {header}
 
       {/* 활성 필터 칩 */}
       {filterChips.length > 0 && (
@@ -372,7 +380,9 @@ function TransactionsPageInner() {
 
       {/* 월 요약 카드 */}
       {displaySummary && (
-        <div className="mx-4 mt-1 p-3 rounded-2xl bg-teal-400 text-white grid grid-cols-4 gap-1 md:mx-6 md:p-4">
+        <div
+          className={`mx-4 mt-1 p-3 rounded-2xl bg-teal-400 text-white grid grid-cols-4 gap-1 transition-opacity md:mx-6 md:p-4 ${txStale ? "opacity-50" : ""}`}
+        >
           <div className="text-center">
             <p className="text-xs opacity-80">수입</p>
             <p className="font-bold text-xs">
@@ -405,7 +415,9 @@ function TransactionsPageInner() {
       )}
 
       {/* 거래 목록 */}
-      <div className="flex-1 overflow-y-auto mt-3 pb-2">
+      <div
+        className={`flex-1 overflow-y-auto mt-3 pb-2 transition-opacity ${txStale ? "opacity-50" : ""}`}
+      >
         {isFiltered && (
           <p className="px-4 pb-1.5 text-xs text-gray-400 md:px-6">
             {filteredTransactions.length}건
