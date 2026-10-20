@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { AssetAccount, AssetSnapshot } from "@2k-jii-money/supabase-types";
 import { formatCurrency, formatYearMonth } from "@/src/lib/utils/formatters";
@@ -65,7 +66,7 @@ export function AssetComparisonModal({
 
   const hasPrevData = prevSnapshots.length > 0;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center">
       <div className="w-full max-w-md bg-white rounded-t-2xl flex flex-col max-h-[90vh] md:rounded-2xl md:shadow-2xl">
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
@@ -166,6 +167,7 @@ export function AssetComparisonModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

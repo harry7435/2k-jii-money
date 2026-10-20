@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -813,7 +814,7 @@ export default function SettingsPage() {
       </div>
 
       {/* QR 모달 */}
-      {showQR && inviteUrl && (
+      {showQR && inviteUrl && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           onClick={() => setShowQR(false)}
@@ -823,11 +824,12 @@ export default function SettingsPage() {
             <QRCode value={inviteUrl} size={200} />
             <p className="text-xs text-gray-500">탭하여 닫기</p>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* 멤버 목록 모달 */}
-      {showMembers && (
+      {showMembers && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           onClick={() => setShowMembers(false)}
@@ -857,7 +859,8 @@ export default function SettingsPage() {
               닫기
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import {
@@ -69,7 +70,7 @@ export function EditAccountModal({
     },
   });
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center">
       <div className="w-full max-w-md bg-white rounded-t-2xl p-5 space-y-4 md:rounded-2xl md:shadow-2xl">
         <div className="flex items-center justify-between">
@@ -130,6 +131,7 @@ export function EditAccountModal({
           계좌 삭제
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
