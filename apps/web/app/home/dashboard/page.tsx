@@ -34,12 +34,14 @@ import { SummarySection } from "@/src/components/dashboard/SummarySection";
 import { ExpenseByMiddleCategory } from "@/src/components/dashboard/ExpenseByMiddleCategory";
 import { FixedVsVariableExpense } from "@/src/components/dashboard/FixedVsVariableExpense";
 import { EvaluationReport } from "@/src/components/dashboard/EvaluationReport";
+import { AiExportModal } from "@/src/components/dashboard/AiExportModal";
 import { DashboardSkeleton } from "@/src/components/skeletons/DashboardSkeleton";
 
 // 전월 대비 증감 한 줄. 전월 기록이 없으면(0) 표시하지 않음.
 export default function DashboardPage() {
   const { family } = useFamilyStore();
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
+  const [aiOpen, setAiOpen] = useState(false);
   const familyId = family?.id ?? "";
 
   const { data: transactions = [], isLoading: txLoading } = useQuery({
@@ -141,6 +143,22 @@ export default function DashboardPage() {
             chevron_right
           </span>
         </Link>
+
+        {/* AI 리포트용 데이터 복사 */}
+        <button
+          onClick={() => setAiOpen(true)}
+          className="flex w-full items-center justify-between bg-white border border-gray-100 rounded-2xl p-3 active:bg-gray-50"
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-500">
+              auto_awesome
+            </span>
+            <span className="text-sm font-semibold">AI 리포트용 데이터 복사</span>
+          </div>
+          <span className="material-symbols-outlined text-gray-400">
+            chevron_right
+          </span>
+        </button>
 
         {/* 요약 카드 */}
         {summary && (
@@ -325,6 +343,16 @@ export default function DashboardPage() {
           {formatYearMonth(yearMonth)} 통계
         </p>
       </div>
+
+      <AiExportModal
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        familyId={familyId}
+        yearMonth={yearMonth}
+        transactions={transactions}
+        categories={categories}
+        prevSummary={prevSummary}
+      />
     </div>
   );
 }
