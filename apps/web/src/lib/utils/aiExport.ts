@@ -1,4 +1,6 @@
 import type {
+  AssetAccount,
+  AssetSnapshot,
   Budget,
   Category,
   MonthlyNote,
@@ -8,6 +10,8 @@ import type {
 import { formatCurrency, formatYearMonth } from "./formatters";
 import { findMiddleCategory, getCategoryPath } from "./categoryUtils";
 import { EVALUATION_LABELS } from "../constants/categories";
+import { ASSET_ACCOUNT_TYPE_MAP, ASSET_TYPE_ORDER } from "../constants/assets";
+import { buildMonthRange } from "./trendUtils";
 
 export interface MonthSummary {
   income: number;
@@ -126,14 +130,20 @@ export function buildAiExport(input: AiExportInput): string {
   } else {
     const byMiddle = new Map<
       string,
-      { name: string; total: number; subs: Map<string, { name: string; total: number }> }
+      {
+        name: string;
+        total: number;
+        subs: Map<string, { name: string; total: number }>;
+      }
     >();
     for (const t of expenses) {
       const mid = findMiddleCategory(t.category_id, categories);
       const key = mid?.id ?? "unknown";
-      const g =
-        byMiddle.get(key) ??
-        { name: mid?.name ?? "(분류 없음)", total: 0, subs: new Map() };
+      const g = byMiddle.get(key) ?? {
+        name: mid?.name ?? "(분류 없음)",
+        total: 0,
+        subs: new Map(),
+      };
       g.total += t.amount;
       const sub = categories.find((c) => c.id === t.category_id);
       const subKey = sub && sub.level === 3 ? sub.id : "_self";
@@ -150,7 +160,11 @@ export function buildAiExport(input: AiExportInput): string {
     const rows = [...byMiddle.entries()]
       .sort(([, a], [, b]) => b.total - a.total)
       .map(([key, g]) => {
-        const row = [cell(g.name), formatCurrency(g.total), pct(g.total, expense)];
+        const row = [
+          cell(g.name),
+          formatCurrency(g.total),
+          pct(g.total, expense),
+        ];
         if (hasBudget) {
           const b = budgetByCat.get(key);
           row.push(
@@ -172,7 +186,11 @@ export function buildAiExport(input: AiExportInput): string {
           ["소분류", "금액", "중분류 내 비중"],
           [...g.subs.values()]
             .sort((a, b) => b.total - a.total)
-            .map((s) => [cell(s.name), formatCurrency(s.total), pct(s.total, g.total)]),
+            .map((s) => [
+              cell(s.name),
+              formatCurrency(s.total),
+              pct(s.total, g.total),
+            ]),
         ),
       );
     }
@@ -233,7 +251,16 @@ export function buildAiExport(input: AiExportInput): string {
       );
       out.push(
         table(
-          ["날짜", "시간", "유형", "카테고리", "금액", "결제수단", "평가", "메모"],
+          [
+            "날짜",
+            "시간",
+            "유형",
+            "카테고리",
+            "금액",
+            "결제수단",
+            "평가",
+            "메모",
+          ],
           sorted.map((t) => [
             t.date,
             t.time ?? "",
@@ -252,6 +279,156 @@ export function buildAiExport(input: AiExportInput): string {
       );
     }
   }
+
+  return out.join("\n") + "\n";
+}
+
+export interface AssetAiExportInput {
+  yearMonth: string;
+  accounts: AssetAccount[];
+  snapshots: AssetSnapshot[];
+  prevSnapshots: AssetSnapshot[];
+  history: AssetSnapshot[];
+  savingsTx: Transaction[];
+  range: { from: string; to: string };
+}
+
+/** 총자산/부채/순자산. 자산 페이지와 같은 기준(순자산 = 자산 - 부채). */
+function assetTotals(accounts: AssetAccount[], snapshots: AssetSnapshot[]) {
+  const amounts = new Map(snapshots.map((s) => [s.account_id, s.amount]));
+  let asset = 0;
+  let liability = 0;
+  for (const a of accounts) {
+    const v = amounts.get(a.id) ?? 0;
+    if (a.account_type === "liability") liability += v;
+    else asset += v;
+  }
+  return { asset, liability, net: asset - liability };
+}
+
+/** 월 자산 현황을 AI 리포트용 Markdown으로 만든다. 멤버 정보는 포함하지 않는다. */
+export function buildAssetAiExport(input: AssetAiExportInput): string {
+  const {
+    yearMonth,
+    accounts,
+    snapshots,
+    prevSnapshots,
+    history,
+    savingsTx,
+    range,
+  } = input;
+  const label = formatYearMonth(yearMonth);
+  const out: string[] = [];
+
+  out.push(
+    `아래는 우리 가족의 ${label} 자산 현황입니다. 다음 항목으로 리포트를 작성해 주세요.`,
+    "",
+    "1. 총평",
+    "2. 순자산 변화",
+    "3. 자산 구성",
+    "4. 부채",
+    "5. 저축 습관",
+    "6. 제안",
+    "",
+    "금액 단위는 원(KRW)입니다. 저축 금액이 음수이면 저축 인출(저축에서 돈을 뺀 것)입니다.",
+  );
+
+  const cur = assetTotals(accounts, snapshots);
+  const hasPrev = prevSnapshots.length > 0;
+  const prev = assetTotals(accounts, prevSnapshots);
+  const line = (name: string, c: number, p: number) =>
+    `- ${name}: ${formatCurrency(c)}` +
+    (hasPrev ? ` (전월 대비 ${signed(c - p)}, 전월 ${formatCurrency(p)})` : "");
+
+  out.push(
+    "",
+    "## 이번 달 요약",
+    "",
+    line("총자산", cur.asset, prev.asset),
+    line("부채", cur.liability, prev.liability),
+    line("순자산", cur.net, prev.net),
+  );
+
+  const snapped = new Set(snapshots.map((s) => s.account_id));
+  const missing = ASSET_TYPE_ORDER.flatMap((type) =>
+    accounts
+      .filter((a) => a.account_type === type)
+      .sort((a, b) => a.sort_order - b.sort_order),
+  )
+    .filter((a) => !snapped.has(a.id))
+    .map((a) => cell(a.name));
+  if (missing.length > 0) {
+    out.push(
+      `- 이번 달 잔액 기록이 없는 계좌: ${missing.join(", ")} (합계에서 0원으로 계산됨)`,
+    );
+  }
+
+  out.push("", "## 계좌별 잔액", "");
+  if (accounts.length === 0) {
+    out.push("등록된 계좌 없음");
+  } else {
+    const curMap = new Map(snapshots.map((s) => [s.account_id, s.amount]));
+    const prevMap = new Map(prevSnapshots.map((s) => [s.account_id, s.amount]));
+    const rows: string[][] = [];
+    for (const type of ASSET_TYPE_ORDER) {
+      const list = accounts
+        .filter((a) => a.account_type === type)
+        .sort((a, b) => a.sort_order - b.sort_order);
+      for (const a of list) {
+        const c = curMap.get(a.id);
+        const p = prevMap.get(a.id);
+        rows.push([
+          ASSET_ACCOUNT_TYPE_MAP[type].label,
+          cell(a.name),
+          c === undefined ? "기록 없음" : formatCurrency(c),
+          c !== undefined && p !== undefined ? signed(c - p) : "-",
+        ]);
+      }
+    }
+    out.push(table(["유형", "계좌", "잔액", "전월 대비"], rows));
+  }
+
+  const months = buildMonthRange(range.from, range.to);
+
+  out.push("", "## 월별 추이", "");
+  out.push(
+    table(
+      ["월", "총자산", "부채", "순자산"],
+      months.map((m) => {
+        const snaps = history.filter((s) => s.year_month === m);
+        if (snaps.length === 0) return [m, "기록 없음", "-", "-"];
+        const t = assetTotals(accounts, snaps);
+        return [
+          m,
+          formatCurrency(t.asset),
+          formatCurrency(t.liability),
+          formatCurrency(t.net),
+        ];
+      }),
+    ),
+  );
+
+  out.push("", "## 월별 저축", "");
+  out.push(
+    table(
+      ["월", "입금", "인출", "순액"],
+      months.map((m) => {
+        const list = savingsTx.filter(
+          (t) => t.type === "savings" && t.date.slice(0, 7) === m,
+        );
+        const deposit = sum(list.filter((t) => t.amount > 0));
+        const withdraw = list
+          .filter((t) => t.amount < 0)
+          .reduce((s, t) => s - t.amount, 0);
+        return [
+          m,
+          formatCurrency(deposit),
+          formatCurrency(withdraw),
+          formatCurrency(deposit - withdraw),
+        ];
+      }),
+    ),
+  );
 
   return out.join("\n") + "\n";
 }

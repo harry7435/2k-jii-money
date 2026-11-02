@@ -23,6 +23,7 @@ import { AddAccountModal } from "@/src/components/assets/AddAccountModal";
 import { EditAccountModal } from "@/src/components/assets/EditAccountModal";
 import { AssetTrendChart } from "@/src/components/assets/AssetTrendChart";
 import { SavingsTrendChart } from "@/src/components/assets/SavingsTrendChart";
+import { AssetAiExportModal } from "@/src/components/assets/AssetAiExportModal";
 import { AssetComparisonModal } from "@/src/components/assets/AssetComparisonModal";
 import {
   buildMonthList,
@@ -43,6 +44,7 @@ export default function AssetsPage() {
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
+  const [showAiExport, setShowAiExport] = useState(false);
   // 차트 범위. 기본값은 최근 12개월 — 상단 월 선택기와는 독립적으로 움직인다
   const [range, setRange] = useState(() => {
     const recent = buildMonthList(12);
@@ -202,6 +204,16 @@ export default function AssetsPage() {
           전월 대비 변화
         </button>
 
+        <button
+          onClick={() => setShowAiExport(true)}
+          className="w-full flex items-center justify-center gap-1 py-2.5 rounded-xl bg-white border border-gray-100 text-sm font-medium text-gray-600 active:bg-gray-50"
+        >
+          <span className="material-symbols-outlined text-lg">
+            auto_awesome
+          </span>
+          AI 리포트용 데이터 복사
+        </button>
+
         {/* 지난달 복사 버튼 */}
         {snapshots.length === 0 && prevSnapshots.length > 0 && (
           <button
@@ -304,6 +316,18 @@ export default function AssetsPage() {
           onClose={() => setShowComparison(false)}
         />
       )}
+
+      <AssetAiExportModal
+        isOpen={showAiExport}
+        onClose={() => setShowAiExport(false)}
+        yearMonth={yearMonth}
+        accounts={accounts}
+        snapshots={snapshots}
+        prevSnapshots={prevSnapshots}
+        history={history}
+        savingsTx={savingsTx}
+        range={range}
+      />
 
       {editingAccount && (
         <EditAccountModal
