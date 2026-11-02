@@ -29,6 +29,14 @@
 - 배경: `fixed inset-0 z-100 flex items-center justify-center bg-black/40`
 - 컨테이너: `w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden`
 
+### 텍스트 복사 모달 (`src/components/CopyTextModal.tsx`)
+
+텍스트를 미리 보여주고 클립보드로 복사하는 모달은 이 껍데기를 쓴다. 포털·스크롤 잠금·"복사됨 ✓" 표시·복사 실패 시 textarea 선택과 안내까지 들어 있어 새로 만들지 않는다.
+
+- Props: `isOpen`, `onClose`, `title`, `text`, `isLoading?`, `children?`(미리보기 위 옵션 영역 — 대시보드의 "거래 내역 포함" 체크박스)
+- 복사할 텍스트는 순수 함수로 만들고 단위 테스트한다 (`src/lib/utils/aiExport.ts`의 `buildAiExport`·`buildAssetAiExport`)
+- 적용 예: `dashboard/AiExportModal.tsx`(열릴 때만 추가 조회), `assets/AssetAiExportModal.tsx`(페이지 데이터만 사용)
+
 ### DateTimePicker (`src/components/DateTimePicker.tsx`)
 
 - Props: `date: string` (yyyy-MM-dd), `time: string` (HH:mm | ''), `onDateChange`, `onTimeChange`
