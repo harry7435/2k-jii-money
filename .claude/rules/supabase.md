@@ -33,6 +33,8 @@ membership → 데이터 순으로 왕복이 직렬로 쌓인다(각각 CORS pre
 
 ### 다시 측정할 때 쓰는 방법
 
+PWA 실기기에서는 원격 디버깅 없이 설정 화면의 "앱 시작 시간"으로 확인할 수 있다. 첫 화면이 `/home/transactions`인 전체 로드만 기록하고, 숫자만 localStorage(`startup-timings`)에 최근 10건 남긴다(`src/lib/perf/startupTiming.ts`). manifest `start_url`은 리다이렉트 한 단계를 없애려고 `/home/transactions`로 둔다.
+
 로그인 사용자 요청의 응답 시간 — 아래를 터미널에서 실행해 두고, 크롬 Network 탭에서 요청을 우클릭 → Copy as cURL 한 뒤 Enter. `0.000000`은 무시한다.
 
 ```sh

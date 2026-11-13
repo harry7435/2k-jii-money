@@ -11,6 +11,7 @@ import { createClient } from "@/src/lib/supabase/client";
 import { getCurrentMembership } from "@/src/lib/supabase/queries";
 import { TABS } from "@/src/lib/constants/navigation";
 import { useSsgoiConfig } from "@/src/lib/ssgoiConfig";
+import { markHydrated } from "@/src/lib/perf/startupTiming";
 
 export default function HomeLayout({
   children,
@@ -37,6 +38,11 @@ export default function HomeLayout({
     staleTime: 1000 * 60 * 5,
     refetchOnMount: "always",
   });
+
+  // 시작 시간 기록용: 셸의 첫 클라이언트 effect 시점을 hydration 완료로 본다
+  useEffect(() => {
+    markHydrated();
+  }, []);
 
   useEffect(() => {
     if (membership) {

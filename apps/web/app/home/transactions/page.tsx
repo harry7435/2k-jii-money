@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import {
   keepPreviousData,
   useQuery,
@@ -41,6 +41,7 @@ import {
   type TransactionFilter,
 } from "@/src/components/transactions/TransactionFilterPanel";
 import { TransactionsSkeleton } from "@/src/components/skeletons/TransactionsSkeleton";
+import { markDataReady } from "@/src/lib/perf/startupTiming";
 import { createEarlyFetch } from "@/src/lib/supabase/earlyFetch";
 import type { Transaction } from "@2k-jii-money/supabase-types";
 
@@ -309,6 +310,11 @@ function TransactionsPageInner() {
     catLoading ||
     membersLoading ||
     paymentSourcesLoading;
+
+  // 시작 시간 기록용. 로딩이 처음 끝나는 순간만 의미가 있고, 중복 호출은 내부에서 무시된다.
+  useEffect(() => {
+    if (!isLoading) markDataReady();
+  }, [isLoading]);
 
   // 로딩 중에도 실제 화면과 같은 헤더를 그린다. 필터 버튼이 빠지면 헤더 높이와
   // 월 선택기 폭이 달라져 스켈레톤 → 실제 화면 교체 때 레이아웃이 튄다.

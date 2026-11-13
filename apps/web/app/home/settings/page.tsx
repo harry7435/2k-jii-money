@@ -38,6 +38,7 @@ import {
   getChildCategories,
   getCategoryIdsWithDescendants,
 } from "@/src/lib/utils/categoryUtils";
+import { StartupTimingSection } from "@/src/components/settings/StartupTimingSection";
 import { SettingsSkeleton } from "@/src/components/skeletons/SettingsSkeleton";
 import type { PaymentSource } from "@2k-jii-money/supabase-types";
 
@@ -786,6 +787,8 @@ export default function SettingsPage() {
           {changingPassword ? "변경 중..." : "비밀번호 변경"}
         </button>
       </div>
+
+      <StartupTimingSection />
 
       {/* 데이터 초기화 / 로그아웃 */}
       <div className="bg-white mt-2 px-5 py-4 mb-4 space-y-4">
