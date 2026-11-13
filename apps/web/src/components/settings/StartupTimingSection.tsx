@@ -5,10 +5,29 @@ import { format } from "date-fns";
 import {
   clearStartupRecords,
   loadStartupRecords,
+  type RequestTiming,
   type StartupRecord,
 } from "@/src/lib/perf/startupTiming";
 
 const sec = (ms: number) => (ms / 1000).toFixed(1);
+
+// /rest/v1/ 접두사는 떼고, rpc/...와 /auth/v1/... 는 알아볼 수 있게 둔다
+const shortPath = (p: string) => p.replace(/^\/rest\/v1\//, "");
+
+function RequestRow({ q }: { q: RequestTiming }) {
+  return (
+    <li className="text-[10px] text-gray-400 leading-tight">
+      <span className="text-gray-500">{shortPath(q.path)}</span>
+      {" · "}시작 {sec(q.start)}s · 소요 {sec(q.duration)}s
+      {q.connect !== null && (
+        <> · {q.connect === 0 ? "재사용" : `연결 ${sec(q.connect)}s`}</>
+      )}
+      {q.dns !== null && <> · DNS {sec(q.dns)}s</>}
+      {q.wait !== null && <> · 대기 {sec(q.wait)}s</>}
+      {q.protocol && <> · {q.protocol}</>}
+    </li>
+  );
+}
 
 // 진단용 섹션. 앱을 열 때마다 쌓인 시작 시간(최근 10건)을 보여준다.
 export function StartupTimingSection() {
@@ -68,6 +87,18 @@ export function StartupTimingSection() {
                 응답 시작 {sec(r.ttfb)}초 · 문서 {sec(r.docLoaded)}초 · 화면
                 준비 {sec(r.hydrated)}초 · 데이터 {sec(r.dataReady)}초
               </p>
+              {r.requests && r.requests.length > 0 && (
+                <details>
+                  <summary className="text-[10px] text-gray-400">
+                    요청 {r.requests.length}개
+                  </summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {r.requests.map((q, i) => (
+                      <RequestRow key={i} q={q} />
+                    ))}
+                  </ul>
+                </details>
+              )}
             </li>
           ))}
         </ul>

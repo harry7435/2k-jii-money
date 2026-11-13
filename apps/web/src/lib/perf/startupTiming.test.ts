@@ -76,6 +76,102 @@ describe("buildStartupRecord", () => {
   });
 });
 
+describe("요청별 시간", () => {
+  const res = (over: Record<string, unknown> = {}) => ({
+    name: `${SB}/rest/v1/transactions`,
+    startTime: 1000,
+    responseEnd: 1200,
+    ...over,
+  });
+
+  it("쿼리 문자열은 저장하지 않고 경로만 남긴다", () => {
+    const r = build({
+      resources: [res({ name: `${SB}/rest/v1/transactions?family_id=eq.secret` })],
+    });
+    expect(r.requests?.[0].path).toBe("/rest/v1/transactions");
+    expect(JSON.stringify(r.requests)).not.toContain("secret");
+  });
+
+  it("dataReady 전의 Supabase 요청만 담는다", () => {
+    const r = build({
+      resources: [
+        res(),
+        res({ startTime: 2500 }),
+        res({ name: "https://example.com/x.js" }),
+      ],
+    });
+    expect(r.requests).toHaveLength(1);
+  });
+
+  it("시작 순으로 정렬한다", () => {
+    const r = build({
+      resources: [res({ startTime: 1500 }), res({ startTime: 900 })],
+    });
+    expect(r.requests?.map((q) => q.start)).toEqual([900, 1500]);
+  });
+
+  it("requestStart가 0이면 세부값은 null이다", () => {
+    const q = build({ resources: [res({ requestStart: 0 })] }).requests![0];
+    expect(q).toMatchObject({ connect: null, dns: null, wait: null });
+  });
+
+  it("requestStart가 양수면 세부값을 계산한다", () => {
+    const q = build({
+      resources: [
+        res({
+          requestStart: 1100,
+          responseStart: 1180.4,
+          connectStart: 1010,
+          connectEnd: 1090.2,
+          domainLookupStart: 1001,
+          domainLookupEnd: 1009,
+          startTime: 1000.4,
+          responseEnd: 1200.2,
+        }),
+      ],
+    }).requests![0];
+    expect(q).toMatchObject({
+      start: 1000,
+      duration: 200,
+      connect: 80,
+      dns: 8,
+      wait: 80,
+    });
+  });
+
+  it("재사용된 연결은 connect가 0이다", () => {
+    const q = build({
+      resources: [
+        res({ requestStart: 1100, responseStart: 1150, connectStart: 1000, connectEnd: 1000 }),
+      ],
+    }).requests![0];
+    expect(q.connect).toBe(0);
+  });
+
+  it("protocol이 빈 문자열이면 null이다", () => {
+    const r = build({
+      resources: [res({ nextHopProtocol: "" }), res({ nextHopProtocol: "h2" })],
+    });
+    expect(r.requests?.map((q) => q.protocol)).toEqual([null, "h2"]);
+  });
+
+  it("20건까지만 담는다", () => {
+    const resources = Array.from({ length: 25 }, (_, i) => res({ startTime: i }));
+    expect(build({ resources }).requests).toHaveLength(20);
+  });
+
+  it("requests가 없는 예전 기록도 그대로 불러온다", () => {
+    const { requests: _omit, ...old } = build();
+    void _omit;
+    globalThis.localStorage = {
+      getItem: () => JSON.stringify([old]),
+    } as unknown as Storage;
+    const list = loadStartupRecords();
+    expect(list).toHaveLength(1);
+    expect(list[0].requests).toBeUndefined();
+  });
+});
+
 describe("저장소 헬퍼", () => {
   const rec = (at: number): StartupRecord => ({ ...build(), at });
 

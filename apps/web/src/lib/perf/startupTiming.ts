@@ -5,6 +5,25 @@
 export const STARTUP_TIMINGS_KEY = "startup-timings";
 const MAX_RECORDS = 10;
 const TARGET_PATH = "/home/transactions";
+const MAX_REQUESTS = 20;
+
+/**
+ * Supabase 요청 하나의 시간. 쿼리 문자열(필터·ID)은 저장하지 않고 경로만 남긴다.
+ * 연결 시간 구분(콜드 커넥션 vs 서버 응답 지연)을 보려고 만든다.
+ * connect/dns/wait는 서버가 Timing-Allow-Origin을 보낼 때만 값이 있고, 아니면 null이다.
+ */
+export type RequestTiming = {
+  path: string;
+  /** 탐색 시작 기준 요청 시작 ms */
+  start: number;
+  duration: number;
+  protocol: string | null;
+  /** 0이면 기존 연결을 재사용했다는 뜻 */
+  connect: number | null;
+  dns: number | null;
+  /** 요청을 보낸 뒤 첫 바이트까지 */
+  wait: number | null;
+};
 
 export type StartupRecord = {
   /** 기록 시각 (epoch ms) */
@@ -22,6 +41,8 @@ export type StartupRecord = {
   supabaseRequests: number;
   /** dataReady 전에 토큰 갱신 요청이 있었는가 */
   tokenRefresh: boolean;
+  /** dataReady 전 Supabase 요청별 시간 (시작 순, 최대 20건). 예전 기록에는 없다 */
+  requests?: RequestTiming[];
 };
 
 export type NavigationLike = {
@@ -35,7 +56,40 @@ export type ResourceLike = {
   name: string;
   startTime: number;
   responseEnd: number;
+  nextHopProtocol?: string;
+  requestStart?: number;
+  responseStart?: number;
+  connectStart?: number;
+  connectEnd?: number;
+  domainLookupStart?: number;
+  domainLookupEnd?: number;
 };
+
+function toRequestTiming(r: ResourceLike): RequestTiming | null {
+  let path: string;
+  try {
+    path = new URL(r.name).pathname;
+  } catch {
+    return null;
+  }
+  // 교차 출처 리소스는 Timing-Allow-Origin이 없으면 requestStart 등이 0으로 온다
+  const detailed = (r.requestStart ?? 0) > 0;
+  return {
+    path,
+    start: Math.round(r.startTime),
+    duration: Math.round(r.responseEnd - r.startTime),
+    protocol: r.nextHopProtocol || null,
+    connect: detailed
+      ? Math.round((r.connectEnd ?? 0) - (r.connectStart ?? 0))
+      : null,
+    dns: detailed
+      ? Math.round((r.domainLookupEnd ?? 0) - (r.domainLookupStart ?? 0))
+      : null,
+    wait: detailed
+      ? Math.round((r.responseStart ?? 0) - (r.requestStart ?? 0))
+      : null,
+  };
+}
 
 export function buildStartupRecord(input: {
   navigation: NavigationLike;
@@ -62,6 +116,14 @@ export function buildStartupRecord(input: {
       ? before.filter((r) => r.name.startsWith(supabaseUrl)).length
       : 0,
     tokenRefresh: before.some((r) => r.name.includes("/auth/v1/token")),
+    requests: supabaseUrl
+      ? before
+          .filter((r) => r.name.startsWith(supabaseUrl))
+          .sort((a, b) => a.startTime - b.startTime)
+          .map(toRequestTiming)
+          .filter((t): t is RequestTiming => t !== null)
+          .slice(0, MAX_REQUESTS)
+      : [],
   };
 }
 
