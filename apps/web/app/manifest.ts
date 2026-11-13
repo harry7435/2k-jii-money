@@ -5,7 +5,9 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "우리집 가계부",
     short_name: "우리집 가계부",
     description: "부부가 함께 관리하는 스마트 가계부",
-    start_url: "/home",
+    // /home은 /home/transactions로 리다이렉트한다. 시작 주소로 두면 PWA를 열 때마다
+    // 문서 왕복과 proxy의 getUser() 호출이 한 번씩 더 든다.
+    start_url: "/home/transactions",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#ffffff",
