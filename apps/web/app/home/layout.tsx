@@ -98,7 +98,7 @@ export default function HomeLayout({
   return (
     <div className="flex flex-col md:flex-row min-h-screen max-w-md md:max-w-none mx-auto bg-white">
       {/* Sidebar navigation (desktop) / Bottom navigation (mobile) */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex z-40 md:static md:w-56 md:max-w-none md:flex-col md:border-t-0 md:border-r md:py-6 md:gap-1 md:shrink-0">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex z-40 md:sticky md:top-0 md:h-dvh md:self-start md:overflow-y-auto md:w-56 md:max-w-none md:flex-col md:border-t-0 md:border-r md:py-6 md:gap-1 md:shrink-0">
         <div className="hidden md:block px-4 pb-4 mb-4 border-b border-gray-100">
           <p className="font-bold text-lg text-teal-500">우리집 가계부</p>
         </div>

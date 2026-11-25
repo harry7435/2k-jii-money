@@ -319,7 +319,7 @@ function TransactionsPageInner() {
   // 로딩 중에도 실제 화면과 같은 헤더를 그린다. 필터 버튼이 빠지면 헤더 높이와
   // 월 선택기 폭이 달라져 스켈레톤 → 실제 화면 교체 때 레이아웃이 튄다.
   const header = (
-    <div className="flex items-center gap-2 px-4 md:px-6">
+    <div className="sticky top-0 z-10 bg-white flex items-center gap-2 px-4 md:px-6">
       <div className="flex-1">
         <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
       </div>
