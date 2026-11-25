@@ -14,7 +14,7 @@ interface MonthSelectorProps {
 
 export function MonthSelector({ yearMonth, onChange }: MonthSelectorProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 md:px-6">
+    <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 md:px-6">
       <button
         onClick={() => onChange(prevMonth(yearMonth))}
         className="p-1 rounded-full hover:bg-gray-100"
